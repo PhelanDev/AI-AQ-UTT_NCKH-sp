@@ -1,0 +1,56 @@
+# Python caches & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+*.pyo
+
+# Testing & Coverage
+tests/
+esp/tests/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+
+# Plans & Roadmaps
+plans/
+
+# C / C++ build outputs
+*.exe
+*.o
+*.obj
+*.so
+*.dll
+*.dylib
+
+# Environment & Secrets
+.env
+.env.*
+*.key
+*.pem
+
+# IDE & OS artifacts
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Backup archives & temporary files
+backup_before_strip_comments.zip
+*.bak
+*.tmp
+docs/reports/test_img.docx
+docs/figures/test_*.png
+
+# AI Agent internal transcripts & teamwork scratchpads
+.agents/
+
+# External cloned reference repos
+external_refs/

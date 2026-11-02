@@ -1,0 +1,36 @@
+{
+  "hardware_target": "Raspberry Pi 5 (Quad-core ARM Cortex-A76 @ 2.4 GHz, 8GB LPDDR4X)",
+  "thread_config": 4,
+  "execution_mode": "ORT_SEQUENTIAL",
+  "optimization": "ORT_ENABLE_ALL (ARM NEON SIMD)",
+  "forecaster_benchmarks": {
+    "mean_ms": 0.1947609994385857,
+    "min_ms": 0.19060001068282872,
+    "max_ms": 0.22279999393504113,
+    "p95_ms": 0.20212499657645822,
+    "rss_mb": 58.5
+  },
+  "autoencoder_benchmarks": {
+    "mean_ms": 0.022330999781843275,
+    "min_ms": 0.02160000440198928,
+    "max_ms": 0.032499985536560416,
+    "p95_ms": 0.02366000480833463,
+    "rss_mb": 58.5
+  },
+  "summary": {
+    "mean_ms": 0.217091999220429,
+    "min_ms": 0.212200015084818,
+    "max_ms": 0.25529997947160155,
+    "p95_ms": 0.22578500138479285,
+    "rss_mb": 58.5
+  },
+  "acceptance_criteria": {
+    "latency_target_ms": 50.0,
+    "latency_actual_p95_ms": 0.22578500138479285,
+    "latency_pass": true,
+    "memory_target_mb": 100.0,
+    "memory_actual_mb": 58.5,
+    "memory_pass": true,
+    "verdict": "ACCEPT"
+  }
+}

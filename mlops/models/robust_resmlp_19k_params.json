@@ -1,0 +1,36 @@
+{
+  "architecture": "RobustResMLP19k (5 -> 96 -> 96 -> 96 -> 1)",
+  "hidden_dim": 96,
+  "num_res_blocks": 2,
+  "total_params": 19297,
+  "int8_flash_kb": 18.84,
+  "domain_adaptation": "Hanoi_ThanhXuan_Multistation_Real",
+  "training_phases": {
+    "phase1_pretraining_samples": 108641,
+    "phase2_fine_tuning_samples": 21602
+  },
+  "metrics_overall_thanhxuan": {
+    "r2": 0.9962448477745056,
+    "mae": 1.4803264141082764,
+    "rmse": 2.3132195472717285
+  },
+  "metrics_wet_season_thanhxuan": {
+    "r2": 0.9977411031723022,
+    "mae": 1.195388674736023,
+    "rmse": 1.8978174924850464
+  },
+  "x_min": [
+    0.5,
+    0.0,
+    -25.350000381469727,
+    5.199999809265137,
+    -35.7599983215332
+  ],
+  "x_max": [
+    1216.800048828125,
+    93.06999969482422,
+    44.45000076293945,
+    100.0,
+    84.0
+  ]
+}
