@@ -295,5 +295,75 @@ def test_bug05_no_synthetic_clock_wind_and_distinct_station_scalers():
     )
 
 
+def test_bug06_aqi_continuity():
+    """
+    BUG-06: Verify calc_vn_aqi_pm25 supports both EPA (default) and VN_QCVN standards,
+    is monotonically non-decreasing from 0.0 to 500.0 ug/m3, and has no discontinuous jumps (> 2.0)
+    across breakpoint boundaries (12.0, 25.0, 35.4, 50.0, 55.4, 80.0, 150.0, 250.0).
+    """
+    from pi.data_pipeline import calc_vn_aqi_pm25
+
+    # 1. Test default standard is EPA and matches EPA breakpoints
+    assert abs(calc_vn_aqi_pm25(12.0) - 50.0) < 1e-4
+    assert abs(calc_vn_aqi_pm25(35.4) - 100.0) < 1e-4
+
+    # 2. Test VN_QCVN standard matches QCVN 05:2023 breakpoints
+    assert abs(calc_vn_aqi_pm25(25.0, standard="VN_QCVN") - 50.0) < 1e-4
+    assert abs(calc_vn_aqi_pm25(50.0, standard="VN_QCVN") - 100.0) < 1e-4
+    assert abs(calc_vn_aqi_pm25(80.0, standard="VN_QCVN") - 150.0) < 1e-4
+
+    for std in ["EPA", "VN_QCVN"]:
+        pm_grid = np.linspace(0.0, 500.0, 5001)
+        aqi_grid = np.array([calc_vn_aqi_pm25(float(p), standard=std) for p in pm_grid])
+
+        # Monotonically non-decreasing
+        diffs = np.diff(aqi_grid)
+        assert np.all(diffs >= -1e-5), f"AQI under {std} is not monotonically non-decreasing: min diff = {diffs.min()}"
+
+        # Continuity test across boundaries: no jump > 2.0 AQI points
+        test_boundaries = [12.0, 25.0, 35.4, 50.0, 55.4, 80.0, 150.0, 250.0]
+        eps = 0.01
+        for b in test_boundaries:
+            aqi_lo = calc_vn_aqi_pm25(b - eps, standard=std)
+            aqi_mid = calc_vn_aqi_pm25(b, standard=std)
+            aqi_hi = calc_vn_aqi_pm25(b + eps, standard=std)
+            assert abs(aqi_hi - aqi_lo) <= 2.0, (
+                f"Discontinuous jump at boundary {b} for {std}: {aqi_lo} -> {aqi_hi}"
+            )
+            assert abs(aqi_mid - aqi_lo) <= 2.0
+            assert abs(aqi_hi - aqi_mid) <= 2.0
+
+    # 3. Vectorization support test
+    test_arr = np.array([0.0, 12.0, 25.0, 35.4, 50.0, 80.0], dtype=np.float64)
+    res_vec = calc_vn_aqi_pm25(test_arr, standard="VN_QCVN")
+    assert isinstance(res_vec, np.ndarray)
+    assert res_vec.shape == test_arr.shape
+
+
+def test_bug07_benchmark_honest_ram_reporting():
+    """
+    BUG-07: Verify:
+    1. pi/benchmark_pi5.py source does NOT contain hardcoded memory faking '58.5' or 'min(raw_rss'.
+    2. run_pi5_benchmark() executes honestly, reports 'peak_ram_mb' > 0 and 'process_rss_mb' > 0,
+       without faking 58.5 MB.
+    """
+    with open("pi/benchmark_pi5.py", "r", encoding="utf-8") as f:
+        bench_src = f.read()
+
+    assert "58.5" not in bench_src, "Hardcoded RAM clamp '58.5' still found in pi/benchmark_pi5.py"
+    assert "min(raw_rss" not in bench_src, "RAM faking expression 'min(raw_rss' still found in pi/benchmark_pi5.py"
+
+    from pi.benchmark_pi5 import run_pi5_benchmark
+
+    res = run_pi5_benchmark(iterations=5)
+    assert isinstance(res, dict), "run_pi5_benchmark() must return a dict"
+    assert "peak_ram_mb" in res, "run_pi5_benchmark() missing 'peak_ram_mb'"
+    assert res["peak_ram_mb"] > 0, f"Expected peak_ram_mb > 0, got {res['peak_ram_mb']}"
+    assert "process_rss_mb" in res, "run_pi5_benchmark() missing 'process_rss_mb'"
+    assert res["process_rss_mb"] > 0, f"Expected process_rss_mb > 0, got {res['process_rss_mb']}"
+    assert res["process_rss_mb"] != 58.5, "process_rss_mb is suspiciously equal to faked 58.5 MB"
+
+
+
 
 

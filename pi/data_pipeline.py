@@ -97,19 +97,42 @@ def filter_dual_pm_sensor(
         return float(pm_avg), bool(is_anomaly)
     return pm_avg, is_anomaly
 
-def calc_vn_aqi_pm25(pm25: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-    """Calculate Air Quality Index (AQI) from PM2.5 (ug/m3) according to QCVN / EPA breakpoints."""
+def calc_vn_aqi_pm25(
+    pm25: Union[float, np.ndarray],
+    standard: str = "EPA",
+) -> Union[float, np.ndarray]:
+    """Calculate Air Quality Index (AQI) from PM2.5 (ug/m3) according to EPA or QCVN breakpoints.
+
+    Args:
+        pm25: PM2.5 concentration in ug/m3 (scalar or numpy array).
+        standard: Standard to use - "EPA" (US EPA, default) or "VN_QCVN" (Vietnam QCVN 05:2023).
+
+    Returns:
+        Calculated AQI value (scalar float or numpy array).
+    """
     is_scalar = np.isscalar(pm25)
     p = np.asarray(pm25, dtype=np.float64)
 
-    breakpoints = [
-        (0.0, 12.0, 0.0, 50.0),
-        (12.0, 35.4, 50.0, 100.0),
-        (35.4, 55.4, 100.0, 150.0),
-        (55.4, 150.4, 150.0, 200.0),
-        (150.4, 250.4, 200.0, 300.0),
-        (250.4, 500.4, 300.0, 500.0),
-    ]
+    if standard.strip().upper() in ("VN_QCVN", "QCVN", "VN"):
+        breakpoints = [
+            (0.0, 25.0, 0.0, 50.0),
+            (25.0, 50.0, 50.0, 100.0),
+            (50.0, 80.0, 100.0, 150.0),
+            (80.0, 150.0, 150.0, 200.0),
+            (150.0, 250.0, 200.0, 300.0),
+            (250.0, 500.0, 300.0, 500.0),
+        ]
+        top_c = 500.0
+    else:
+        breakpoints = [
+            (0.0, 12.0, 0.0, 50.0),
+            (12.0, 35.4, 50.0, 100.0),
+            (35.4, 55.4, 100.0, 150.0),
+            (55.4, 150.4, 150.0, 200.0),
+            (150.4, 250.4, 200.0, 300.0),
+            (250.4, 500.4, 300.0, 500.0),
+        ]
+        top_c = 500.4
 
     aqi = np.zeros_like(p)
     for c_lo, c_hi, i_lo, i_hi in breakpoints:
@@ -120,7 +143,7 @@ def calc_vn_aqi_pm25(pm25: Union[float, np.ndarray]) -> Union[float, np.ndarray]
             aqi,
         )
 
-    aqi = np.where(p > 500.4, 500.0, aqi)
+    aqi = np.where(p > top_c, 500.0, aqi)
     aqi = np.clip(aqi, 0.0, 500.0)
 
     return float(aqi) if is_scalar else aqi
