@@ -248,4 +248,52 @@ def test_bug04_no_header_overwrite_and_strict_train_scaler(tmp_path):
     )
 
 
+def test_bug05_no_synthetic_clock_wind_and_distinct_station_scalers():
+    """
+    BUG-05: Verify:
+    1. mlops/scripts/train_unified_central_ai.py and mlops/scripts/train_central_forecaster.py
+       do not contain deterministic clock wind direction formula '(idx * 15) % 360'.
+    2. mlops/models/central_autoencoder_params.json has distinct min/max scalers for each
+       of the 8 stations, i.e., len(np.unique(np.round(max_48.reshape(8, 6)[:, 0], 4))) == 8.
+    """
+    import json
+
+    with open("mlops/scripts/train_unified_central_ai.py", "r", encoding="utf-8") as f:
+        unified_src = f.read()
+    assert "(idx * 15) % 360" not in unified_src, (
+        "mlops/scripts/train_unified_central_ai.py still contains synthetic clock wind '(idx * 15) % 360'"
+    )
+
+    with open("mlops/scripts/train_central_forecaster.py", "r", encoding="utf-8") as f:
+        forecaster_src = f.read()
+    assert "(idx * 15) % 360" not in forecaster_src, (
+        "mlops/scripts/train_central_forecaster.py still contains synthetic clock wind '(idx * 15) % 360'"
+    )
+
+    params_path = "mlops/models/central_autoencoder_params.json"
+    assert os.path.exists(params_path), f"{params_path} does not exist"
+    with open(params_path, "r", encoding="utf-8") as f:
+        ae_params = json.load(f)
+
+    max_48 = np.array(ae_params["max_48"], dtype=np.float32)
+    assert max_48.shape == (48,), f"Expected max_48 of length 48, got {max_48.shape}"
+    max_8x6 = max_48.reshape(8, 6)
+
+    distinct_pm25 = np.unique(np.round(max_8x6[:, 0], 4))
+    assert len(distinct_pm25) == 8, (
+        f"Expected 8 distinct PM2.5 maximums across stations, got {len(distinct_pm25)}: {distinct_pm25}"
+    )
+
+    distinct_temp = np.unique(np.round(max_8x6[:, 2], 4))
+    assert len(distinct_temp) == 8, (
+        f"Expected 8 distinct temp maximums across stations, got {len(distinct_temp)}: {distinct_temp}"
+    )
+
+    distinct_rh = np.unique(np.round(max_8x6[:, 3], 4))
+    assert len(distinct_rh) == 8, (
+        f"Expected 8 distinct RH maximums across stations, got {len(distinct_rh)}: {distinct_rh}"
+    )
+
+
+
 

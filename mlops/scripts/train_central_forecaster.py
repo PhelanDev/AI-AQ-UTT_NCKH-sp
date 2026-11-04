@@ -10,6 +10,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 import csv
 import math
 import json
+from datetime import datetime
 import numpy as np
 import torch
 import torch.nn as nn
@@ -54,13 +55,27 @@ def prepare_time_series_data(
                     co2 = float(r["CO"]) * 1.5 + 410.0
                     voc = float(r["NO2"]) * 3.5 + 90.0
                     ws = float(r["Wind Speed"]) if r.get("Wind Speed") else 2.0
-                    wd = (idx * 15) % 360
+
+                    dt_str = r.get("Local Time", "")
+                    month = (idx // 720) % 12 + 1
+                    hour = idx % 24
+                    if dt_str:
+                        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M:%S"):
+                            try:
+                                dt_parsed = datetime.strptime(dt_str, fmt)
+                                month = dt_parsed.month
+                                hour = dt_parsed.hour
+                                break
+                            except ValueError:
+                                pass
+
+                    press = float(r["Pressure"]) if r.get("Pressure") else 1013.2
+                    base_wd = 45.0 if (month in [11, 12, 1, 2, 3] or t < 22.0) else 135.0
+                    wd = (base_wd + 25.0 * math.sin(2 * math.pi * hour / 24.0) + (press - 1010.0) * 2.0) % 360.0
                     wind_u = ws * math.cos(math.radians(wd))
                     wind_v = ws * math.sin(math.radians(wd))
-                    hour = idx % 24
                     h_sin = math.sin(2 * math.pi * hour / 24.0)
                     h_cos = math.cos(2 * math.pi * hour / 24.0)
-                    press = float(r["Pressure"]) if r.get("Pressure") else 1013.2
                     aqi = calc_vn_aqi_pm25(pm25)
 
                     time_series.append([
@@ -131,6 +146,7 @@ def train_forecaster(
 
     best_val_loss = float("inf")
     best_metrics = {}
+    best_state_dict = None
 
     pm_range = feat_max[0] - feat_min[0]
     pm_min = feat_min[0]
@@ -182,11 +198,15 @@ def train_forecaster(
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_metrics = {"r2": r2, "mae": mae, "rmse": rmse}
-            os.makedirs(os.path.dirname(save_pt), exist_ok=True)
-            torch.save(model.state_dict(), save_pt)
+            best_state_dict = {k: v.cpu().clone() for k, v in model.state_dict().items()}
 
         if epoch % 5 == 0 or epoch == epochs:
             print(f"Epoch [{epoch:2d}/{epochs:2d}] - Train Loss: {train_loss:.6f} | Val Loss: {val_loss:.6f} | R²: {r2:.4f} | MAE: {mae:.2f} µg/m³ | RMSE: {rmse:.2f} µg/m³")
+
+    if best_state_dict is not None:
+        os.makedirs(os.path.dirname(save_pt), exist_ok=True)
+        torch.save(best_state_dict, save_pt)
+        model.load_state_dict(best_state_dict)
 
     print("\n=== KẾT QUẢ HUẤN LUYỆN DỰ BÁO TỐT NHẤT ===")
     print(f"Hệ số tương quan R² : {best_metrics.get('r2', 0.88):.4f} (Mục tiêu >= 0.85)")

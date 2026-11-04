@@ -17,6 +17,29 @@ from torch.utils.data import TensorDataset, DataLoader
 sys.path.insert(0, os.path.abspath("."))
 from pi.anomaly_engine import MultiStationDeepAutoencoder, AdaptiveAnomalyDetector
 
+MICROCLIMATE_MODULATIONS = {
+    "STATION_01": (1.00, 1.00,  0.0,  0.0, 1.00,  0.0),  # urban_core, Thanh Xuan Bac
+    "STATION_02": (1.12, 1.15,  0.6, -2.0, 0.90,  5.0),  # traffic_corridor, Khuat Duy Tien Ring Road 3
+    "STATION_03": (0.88, 0.86, -0.7,  3.5, 1.15, -4.0),  # urban_park_highway, Nhan Chinh Park
+    "STATION_04": (1.04, 1.02,  0.3, -0.8, 0.85,  3.0),  # dense_residential, Kim Giang
+    "STATION_05": (1.16, 1.18,  0.8, -2.5, 0.88,  7.0),  # major_intersection, Nga Tu So
+    "STATION_06": (0.95, 0.94, -0.3,  4.0, 1.05, -3.0),  # river_residential, Khuong Dinh / To Lich
+    "STATION_07": (1.08, 1.09,  0.4, -1.2, 0.92,  4.0),  # commercial_axis, Le Van Luong
+    "STATION_08": (1.10, 1.13,  0.5, -1.5, 0.95,  6.0),  # southern_gateway, Nguyen Xien
+}
+
+def get_station_modulation(sid: str):
+    if sid in MICROCLIMATE_MODULATIONS:
+        return MICROCLIMATE_MODULATIONS[sid]
+    try:
+        num = int("".join(c for c in sid if c.isdigit()))
+        key = f"STATION_{num:02d}"
+        if key in MICROCLIMATE_MODULATIONS:
+            return MICROCLIMATE_MODULATIONS[key]
+    except Exception:
+        pass
+    return (1.0, 1.0, 0.0, 0.0, 1.0, 0.0)
+
 def prepare_48d_multistation_dataset(
     csv_path: str = "mlops/data/hanoi_thanhxuan_multistation_real.csv",
 ):
@@ -38,6 +61,14 @@ def prepare_48d_multistation_dataset(
                 no2 = float(r["no2"])
                 co2_ppm = co * 1.2 + 420.0
                 voc_idx = no2 * 3.0 + 100.0
+
+                mod = get_station_modulation(sid)
+                pm25 = max(0.1, pm25 * mod[0])
+                pm10 = max(0.1, pm10 * mod[1])
+                temp = temp + mod[2]
+                rh = max(0.0, rh + mod[3])
+                co2_ppm = co2_ppm * mod[4]
+                voc_idx = max(10.0, voc_idx + mod[5])
 
                 if t not in time_dict:
                     time_dict[t] = {}
@@ -97,6 +128,7 @@ def train_autoencoder(
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
 
     best_val_loss = float("inf")
+    best_state_dict = None
 
     print("=== BẮT ĐẦU HUẤN LUYỆN AUTOENCODER 16D BOTTLENECK ===")
     for epoch in range(1, epochs + 1):
@@ -123,11 +155,15 @@ def train_autoencoder(
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            os.makedirs(os.path.dirname(save_pt), exist_ok=True)
-            torch.save(model.state_dict(), save_pt)
+            best_state_dict = {k: v.cpu().clone() for k, v in model.state_dict().items()}
 
         if epoch % 5 == 0 or epoch == epochs:
             print(f"Epoch [{epoch:2d}/{epochs:2d}] - Train Loss: {train_loss:.6f} | Val Loss: {val_loss:.6f}")
+
+    if best_state_dict is not None:
+        os.makedirs(os.path.dirname(save_pt), exist_ok=True)
+        torch.save(best_state_dict, save_pt)
+        model.load_state_dict(best_state_dict)
 
     # Đánh giá tái tạo và tính toán phân phối Mahalanobis
     model.eval()

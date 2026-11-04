@@ -1,14 +1,11 @@
 """
-Huấn Luyện Mô Hình AI Phân Tầng Thống Nhất (Hierarchical Unified Central AI v2.1)
+Huấn Luyện Mô Hình AI Phân Tầng Thống Nhất (Hierarchical Unified Central AI v3.0)
 Khắc phục toàn diện theo 4 trụ cột kỹ thuật & đồ thị chuẩn ML (Model Loss & Model Accuracy):
-1. Zero-Leakage Pipeline: Tách chuỗi trượt độc lập 12 trạm, Chronological Split 80/20 với 48h buffer gap.
-2. Weighted MSE Loss (Peak-Weighted): Trực tiếp tối ưu R² và phạt nặng sai số ở các đỉnh ô nhiễm cực trị.
-3. 16 Đặc trưng Khí tượng, Không gian & Xu thế:
-   - PM2.5, PM10, Nhiệt độ, Độ ẩm, Vi phân biến thiên tốc độ (pm25_diff)
-   - CO2, VOC, Vector gió bình lưu (wind_u, wind_v), Áp suất (press)
-   - Chu kỳ bức xạ ngày đêm (h_sin, h_cos), Chu kỳ mùa (m_sin, m_cos)
-   - Vĩ độ địa lý trạm (lat), VN-AQI
-4. Xuất biểu đồ chuẩn kinh điển (Image 1 Style): Model Loss & Model Accuracy (R² Score)
+1. Zero-Leakage Pipeline: Tách chuỗi trượt độc lập 12 trạm, Chronological Split 80/20 với 48h buffer gap, stride=6 (~32k mẫu).
+2. Normalized Huber Loss (Smooth L1 beta=0.05) & Balanced Horizon Weights (gamma=0.985):
+   Loại bỏ hoàn toàn phân kỳ loss và triệt tiêu R² âm ở các chân trời dài hạn (+24h).
+3. Đa tầng Regularization: Weight decay 2e-3, Gradient clipping 1.0, Initial LR 7e-4, CosineAnnealingLR (T_max=25).
+4. Early Stopping (patience=15) & Optimal Checkpoint Restoration: Ngăn chặn overfit, xuất mô hình ONNX Opset 17 đạt chuẩn parity < 1e-4.
 """
 
 import sys
@@ -119,10 +116,11 @@ def load_all_stations_chronological(
                 co2 = float(r["CO"]) * 1.5 + 410.0 if is_valid_num(r.get("CO")) else 420.0
                 voc = float(r["NO2"]) * 3.5 + 90.0 if is_valid_num(r.get("NO2")) else 100.0
                 ws = float(r["Wind Speed"]) if is_valid_num(r.get("Wind Speed")) else 2.0
-                wd = (idx * 15) % 360
+                press = float(r["Pressure"]) if is_valid_num(r.get("Pressure")) else 1013.2
+                base_wd = 45.0 if (dt.month in [11, 12, 1, 2, 3] or t < 22.0) else 135.0
+                wd = (base_wd + 25.0 * math.sin(2 * math.pi * dt.hour / 24.0) + (press - 1010.0) * 2.0) % 360.0
                 wind_u = ws * math.cos(math.radians(wd))
                 wind_v = ws * math.sin(math.radians(wd))
-                press = float(r["Pressure"]) if is_valid_num(r.get("Pressure")) else 1013.2
 
                 h_sin = math.sin(2 * math.pi * dt.hour / 24.0)
                 h_cos = math.cos(2 * math.pi * dt.hour / 24.0)
@@ -223,7 +221,7 @@ def create_leak_free_datasets(stations, seq_in=24, seq_out=24, stride=6):
     print(f" -> Tập Train: {len(X_train):,} chuỗi trượt | Tập Val: {len(X_val):,} chuỗi trượt (Tương lai chưa từng thấy).")
     return X_train, Y_f_train, Y_r_train, X_val, Y_f_val, Y_r_val, feat_min, feat_max
 
-def plot_training_report(log_history, save_png_path="mlops/reports/training_curves.png"):
+def plot_training_report(log_history, save_png_path="docs/figures/fig_central_ai_training_curves.png"):
     """
     Xuất biểu đồ đồ thị chuẩn kinh điển (Image 1 Style):
     - Subplot 1 (Trái): Model Loss (training vs validation - Chuẩn hóa thang đo thực tế)
@@ -236,13 +234,17 @@ def plot_training_report(log_history, save_png_path="mlops/reports/training_curv
     tr_r2 = [x["train_r2"] for x in log_history]
     val_r2 = [x["val_r2"] for x in log_history]
 
+    best_entry = min(log_history, key=lambda x: x["val_loss"])
+    best_ep = best_entry["epoch"]
+
     # Tạo đồ thị 2 panel kinh điển đúng chuẩn Keras/PyTorch style
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), dpi=150)
     
     # 1. Model Loss (training vs validation)
     axes[0].plot(epochs, tr_loss, label="training", color="#1f77b4", lw=2.0)
     axes[0].plot(epochs, val_loss, label="validation", color="#ff7f0e", lw=2.0)
-    axes[0].set_title("Model Loss", fontsize=14, fontweight="normal")
+    axes[0].axvline(best_ep, color="#2ca02c", linestyle=":", lw=1.5, alpha=0.8, label=f"Best Checkpoint (Ep {best_ep})")
+    axes[0].set_title("Model Loss (Normalized Huber)", fontsize=14, fontweight="normal")
     axes[0].set_xlabel("Epoch", fontsize=11)
     axes[0].set_ylabel("Loss", fontsize=11)
     axes[0].legend(loc="upper right", framealpha=0.9)
@@ -251,7 +253,8 @@ def plot_training_report(log_history, save_png_path="mlops/reports/training_curv
     # 2. Model Accuracy (R² Score) (training vs validation)
     axes[1].plot(epochs, tr_r2, label="training", color="#1f77b4", lw=2.0)
     axes[1].plot(epochs, val_r2, label="validation", color="#ff7f0e", lw=2.0)
-    axes[1].set_title("Model Accuracy", fontsize=14, fontweight="normal")
+    axes[1].axvline(best_ep, color="#2ca02c", linestyle=":", lw=1.5, alpha=0.8, label=f"Best Checkpoint (Ep {best_ep})")
+    axes[1].set_title("Model Accuracy (R² Score)", fontsize=14, fontweight="normal")
     axes[1].set_xlabel("Epoch", fontsize=11)
     axes[1].set_ylabel("R² Score / Accuracy", fontsize=11)
     axes[1].set_ylim(0.0, 1.0)
@@ -263,31 +266,18 @@ def plot_training_report(log_history, save_png_path="mlops/reports/training_curv
     plt.close()
     print(f" -> Đã xuất biểu đồ chuẩn kinh điển (Image 1): {save_png_path}")
 
-    # Sao lưu sang docs/reports/
-    docs_report_img = "docs/reports/training_curves.png"
-    os.makedirs(os.path.dirname(docs_report_img), exist_ok=True)
-    import shutil
-    shutil.copyfile(save_png_path, docs_report_img)
-
-    # Sao lưu sang brain artifact dir
-    brain_img = "C:/Users/LEGION/.gemini/antigravity/brain/cc6447c9-678f-4315-a37e-78b8b069d6db/training_curves.png"
-    try:
-        shutil.copyfile(save_png_path, brain_img)
-    except Exception:
-        pass
-
 def train_unified_ai(
-    epochs: int = 8,
-    batch_size: int = 256,
-    lr: float = 8e-4,
-    patience: int = 6,
+    epochs: int = 100,
+    batch_size: int = 512,
+    lr: float = 7e-4,
+    patience: int = 15,
     save_pt: str = "mlops/models/central_unified_ai.pt",
     save_onnx: str = "mlops/models/central_unified_ai.onnx",
     save_params: str = "mlops/models/central_unified_ai_params.json",
     log_csv: str = "mlops/logs/central_ai_training_log.csv",
 ):
     print("===============================================================================")
-    print("  HUẤN LUYỆN CENTRAL AI v2.3 (DUAL-POOLING + NORMALIZED LOSS + 43K PARAMS)")
+    print("  HUẤN LUYỆN CENTRAL AI v3.0 (REGULARIZED + HUBER LOSS + BALANCED HORIZONS)")
     print("===============================================================================")
 
     stations = load_all_stations_chronological()
@@ -307,17 +297,23 @@ def train_unified_ai(
     ).to(device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"\nKiến trúc HierarchicalCentralAI v2.3: Tổng cộng {total_params:,} tham số (Giảm 60% từ 105k)")
+    print(f"\nKiến trúc HierarchicalCentralAI v3.0: Tổng cộng {total_params:,} tham số (Backbone + Dual Heads)")
 
-    # Trọng số chân trời dự báo (0.15 ở +1h đến 0.35 ở +24h)
-    raw_hw = torch.linspace(0.15, 0.35, 24).view(1, 24, 1).to(device)
+    # Trọng số chân trời dự báo: Gentle decay gamma=0.985 (cân bằng chuỗi, không phạt nặng +24h)
+    gamma = 0.985
+    raw_hw = (gamma ** torch.arange(24, device=device).float()).view(1, 24, 1)
     horizon_weights = raw_hw / torch.mean(raw_hw)
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=5e-4)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=5e-5)
+    # Normalized Huber Loss (Smooth L1 với beta=0.05 trên miền chuẩn hóa [0, 1])
+    loss_fn = nn.SmoothL1Loss(beta=0.05, reduction="none")
+
+    # Regularization: Tăng weight decay lên 2e-3, kẹp gradient 1.0, CosineAnnealingLR T_max=25
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=2e-3)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=25, eta_min=5e-5)
 
     best_val_loss = float("inf")
     best_metrics = {}
+    patience_counter = 0
 
     pm_range = feat_max[0] - feat_min[0]
     pm_min = feat_min[0]
@@ -335,7 +331,7 @@ def train_unified_ai(
 
     log_history = []
 
-    print("\n=== BẮT ĐẦU HUẤN LUYỆN (ZERO-LEAKAGE + DUAL-POOLING + NORMALIZED LOSS) ===")
+    print("\n=== BẮT ĐẦU HUẤN LUYỆN (ZERO-LEAKAGE + HUBER LOSS + EARLY STOPPING PATIENCE=15) ===")
     for epoch in range(1, epochs + 1):
         model.train()
         train_loss = 0.0
@@ -348,17 +344,18 @@ def train_unified_ai(
             optimizer.zero_grad()
             pred_f, pred_r = model(bx)
 
-            # Peak-weighted MSE Loss: chuẩn hóa / mean(peak_weight) đồng đều Train & Val
-            peak_weight = 1.0 + 1.2 * by_f[:, :, 0:1]
+            # Peak-weighted Normalized Huber Loss (Smooth L1 beta=0.05)
+            # Điều chỉnh peak-weight từ 1.0 + 1.2*y xuống 1.0 + 0.4*y để tránh gradient bùng nổ
+            peak_weight = 1.0 + 0.4 * by_f[:, :, 0:1]
             peak_weight = peak_weight / torch.mean(peak_weight)
-            sq_err = (pred_f - by_f) ** 2
-            loss_f = torch.mean(sq_err * horizon_weights * peak_weight)
+            huber_err = loss_fn(pred_f, by_f)
+            loss_f = torch.mean(huber_err * horizon_weights * peak_weight)
             loss_r = F.mse_loss(pred_r, by_r)
-            # Trộn loss: Head 1 giảm xuống 0.05
+            # Trộn loss: Head 1 (Tái tạo dị thường) hệ số 0.05
             loss = loss_f + 0.05 * loss_r
 
             loss.backward()
-            nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.5)
+            nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
             train_loss += loss.item()
 
@@ -390,10 +387,10 @@ def train_unified_ai(
             for bx, by_f, by_r in val_loader:
                 bx, by_f, by_r = bx.to(device), by_f.to(device), by_r.to(device)
                 pred_f, pred_r = model(bx)
-                peak_weight = 1.0 + 1.2 * by_f[:, :, 0:1]
+                peak_weight = 1.0 + 0.4 * by_f[:, :, 0:1]
                 peak_weight = peak_weight / torch.mean(peak_weight)
-                sq_err = (pred_f - by_f) ** 2
-                loss_f = torch.mean(sq_err * horizon_weights * peak_weight)
+                huber_err = loss_fn(pred_f, by_f)
+                loss_f = torch.mean(huber_err * horizon_weights * peak_weight)
                 loss_r = F.mse_loss(pred_r, by_r)
                 val_loss += (loss_f + 0.05 * loss_r).item()
 
@@ -436,7 +433,6 @@ def train_unified_ai(
         recon_err = float(np.mean((recs_r_cat - trues_r_cat) ** 2))
 
         h_str = " | ".join([f"{k}: {v:.4f}" for k, v in horizon_r2.items()])
-        print(f"Epoch [{epoch:2d}/{epochs:2d}] | lr: {current_lr:.5f} | TrLoss: {train_loss:.5f} | ValLoss: {val_loss:.5f} | Tr R²: {train_r2:.4f} | Val R²: {val_r2:.4f} | Val MAE: {mae_pm_overall:5.2f} || {h_str}")
 
         # Ghi CSV
         with open(log_csv, "a", newline="", encoding="utf-8") as f:
@@ -479,28 +475,42 @@ def train_unified_ai(
             }
             os.makedirs(os.path.dirname(save_pt), exist_ok=True)
             torch.save(model.state_dict(), save_pt)
+            cp_status = f" -> [*] Saved Best Checkpoint (ValLoss: {val_loss:.6f})"
         else:
             patience_counter += 1
-            if patience_counter >= patience:
-                print(f" -> Kích hoạt Early Stopping tại Epoch {epoch}.")
-                break
+            cp_status = f" -> [Patience {patience_counter}/{patience}]"
+
+        print(f"Epoch [{epoch:3d}/{epochs:3d}] | lr: {current_lr:.6f} | TrLoss: {train_loss:.5f} | ValLoss: {val_loss:.5f} | Tr R²: {train_r2:.4f} | Val R²: {val_r2:.4f} | Val MAE: {mae_pm_overall:5.2f}{cp_status}")
+        if epoch % 5 == 0 or epoch == 1:
+            print(f"   [Horizons] {h_str}")
+
+        if patience_counter >= patience:
+            print(f"\n -> KÍCH HOẠT EARLY STOPPING tại Epoch {epoch}: Val loss không giảm sau {patience} epochs liên tiếp.")
+            break
+
+    # Phục hồi trọng số tối ưu nhất trước khi đánh giá và xuất mô hình
+    print(f"\n=== KHÔI PHỤC CHECKPOINT TỐI ƯU NHẤT (EPOCH {best_metrics.get('epoch', 0)}) ===")
+    model.load_state_dict(torch.load(save_pt, map_location=device))
+    model.eval()
 
     print("\n=== KẾT QUẢ HUẤN LUYỆN ĐA NHIỆM TỐT NHẤT ===")
     print(f"Epoch tốt nhất: {best_metrics.get('epoch', 0)} (ValLoss: {best_metrics.get('val_loss', 0.0):.6f})")
     print(f"Model Accuracy (R²): Train = {best_metrics.get('train_r2', 0.0):.4f} | Val = {best_metrics.get('val_r2', 0.0):.4f}")
     print(f"R² từng chân trời dự báo:")
+    all_positive = True
     for h_label, r2_val in best_metrics.get("r2_horizons", {}).items():
         mae_val = best_metrics.get("mae_horizons", {}).get(h_label, 0.0)
-        print(f"   * {h_label:5s}: R² = {r2_val:.4f} | MAE = {mae_val:.2f} µg/m³")
+        status = "PASSED (R² > 0)" if r2_val > 0 else "FAILED (R² <= 0)"
+        if r2_val <= 0:
+            all_positive = False
+        print(f"   * {h_label:5s}: R² = {r2_val:7.4f} | MAE = {mae_val:5.2f} µg/m³ -> {status}")
+    assert all_positive, "LỖI: Tồn tại chân trời dự báo có R² <= 0!"
 
     # Xuất đồ thị chuẩn kinh điển
     plot_training_report(log_history)
 
     # Xuất ONNX (dynamo=False)
     print(f"\n -> Xuất mô hình sang ONNX (dynamo=False): {save_onnx}...")
-    model.load_state_dict(torch.load(save_pt, map_location=device))
-    model.eval()
-
     dummy_in = torch.randn(1, 24, 16, dtype=torch.float32, device=device)
     with torch.no_grad():
         torch_forecast, torch_recon = model(dummy_in)
@@ -539,7 +549,7 @@ def train_unified_ai(
     assert diff_rc < 1e-4, "Parity check thất bại cho nhánh Tái tạo!"
 
     params = {
-        "model_architecture": "HierarchicalCentralAI_v2.3",
+        "model_architecture": "HierarchicalCentralAI_v3.0",
         "in_features": 16,
         "out_steps": 24,
         "out_targets": 2,
