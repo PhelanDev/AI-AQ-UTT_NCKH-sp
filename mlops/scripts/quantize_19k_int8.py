@@ -85,7 +85,7 @@ def export_c_header_19k(model_path: str, params_json: str, output_header: str):
     print(f" -> Đang xuất file Header C++ nhúng vào: {output_header}...")
     with open(output_header, "w", encoding="utf-8") as f:
         f.write("/*\n")
-        f.write(" * model_data.h\n")
+        f.write(" * model_data_19k.h\n")
         f.write(" * Trọng số lượng tử hóa INT8 cho mạng Robust Residual TinyML 19.297 tham số.\n")
         f.write(" * Tối ưu hóa triệt tiêu học vẹt và đã Domain Adaptation trên dữ liệu thực tế Thanh Xuân, Hà Nội.\n")
         f.write(" * Tự động sinh bởi: quantize_19k_int8.py\n")
@@ -134,8 +134,8 @@ def main():
     base_dir = os.path.dirname(__file__)
     model_path = os.path.join(base_dir, "..", "models", "robust_resmlp_19k.pt")
     params_path = os.path.join(base_dir, "..", "models", "robust_resmlp_19k_params.json")
-    out_header = os.path.join(base_dir, "..", "..", "esp", "include", "model_data.h")
-    export_c_header_19k(model_path, params_path, out_header)
+    out_path = os.path.join(base_dir, "..", "..", "esp", "include", "model_data_19k.h")
+    export_c_header_19k(model_path, params_path, out_path)
 
 if __name__ == "__main__":
     main()

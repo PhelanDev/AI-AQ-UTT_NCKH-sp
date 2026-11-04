@@ -57,12 +57,20 @@ def prepare_48d_multistation_dataset(
     arr_48 = np.array(vectors, dtype=np.float32)
     print(f" -> Tạo thành công {len(arr_48)} khung đo 48 chiều đồng thời trên 8 trạm.")
 
-    # Min-Max Normalization
-    min_48 = np.min(arr_48, axis=0)
-    max_48 = np.max(arr_48, axis=0)
-    norm_48 = (arr_48 - min_48) / np.maximum(max_48 - min_48, 1e-6)
+    # Chronological Split TRƯỚC KHI tính Min-Max với BUFFER_HOURS = 48
+    BUFFER_HOURS = 48
+    split = int(0.8 * len(arr_48))
+    train_raw = arr_48[:split]
+    val_raw = arr_48[split + 48:]
 
-    return norm_48, min_48, max_48
+    # Min-Max Normalization nghiêm ngặt trên tập Train
+    min_48 = train_raw.min(axis=0)
+    max_48 = train_raw.max(axis=0)
+    denom_48 = np.maximum(max_48 - min_48, 1e-6)
+    X_train = (train_raw - min_48) / denom_48
+    X_val = (val_raw - min_48) / denom_48
+
+    return X_train, X_val, min_48, max_48
 
 def train_autoencoder(
     epochs: int = 25,
@@ -72,12 +80,7 @@ def train_autoencoder(
     save_onnx: str = "mlops/models/central_autoencoder.onnx",
     save_params: str = "mlops/models/central_autoencoder_params.json",
 ):
-    X_norm, min_48, max_48 = prepare_48d_multistation_dataset()
-    n_samples = len(X_norm)
-
-    # Train / Val split 80/20
-    split = int(0.80 * n_samples)
-    X_train, X_val = X_norm[:split], X_norm[split:]
+    X_train, X_val, min_48, max_48 = prepare_48d_multistation_dataset()
 
     train_ds = TensorDataset(torch.tensor(X_train), torch.tensor(X_train))
     val_ds = TensorDataset(torch.tensor(X_val), torch.tensor(X_val))

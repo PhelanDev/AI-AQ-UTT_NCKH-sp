@@ -122,29 +122,38 @@ def main():
     c_target_tx = np.clip(y_tx.flatten() / np.maximum(pm_raw_tx, 1.0), 0.25, 1.05)[:, None]
     print(f" -> Tập địa phương hóa Quận Thanh Xuân & Hà Nội: {len(X_tx):,} mẫu.")
 
-    np.random.seed(42)
-    tx_perm = np.random.permutation(len(X_tx))
-    tx_split = int(0.80 * len(X_tx))
-    tx_train_idx, tx_test_idx = tx_perm[:tx_split], tx_perm[tx_split:]
+    BUFFER_HOURS = 48
+    split_idx = int(0.8 * len(X_tx))
+    X_tx_train = X_tx[:split_idx]
+    y_tx_train = y_tx[:split_idx]
+    c_tx_train = c_target_tx[:split_idx]
 
-    X_tx_train, c_tx_train = X_tx[tx_train_idx], c_target_tx[tx_train_idx]
-    X_tx_test, c_tx_test = X_tx[tx_test_idx], c_target_tx[tx_test_idx]
-    y_tx_test = y_tx[tx_test_idx]
-    pm_raw_tx_test = pm_raw_tx[tx_test_idx]
-    rh_tx_test = rh_tx[tx_test_idx]
-    print(f"    + Thanh Xuân Train: {len(X_tx_train):,} mẫu | Test độc lập: {len(X_tx_test):,} mẫu.")
+    X_tx_test = X_tx[split_idx + BUFFER_HOURS:]
+    y_tx_test = y_tx[split_idx + BUFFER_HOURS:]
+    c_tx_test = c_target_tx[split_idx + BUFFER_HOURS:]
+    pm_raw_tx_test = pm_raw_tx[split_idx + BUFFER_HOURS:]
+    rh_tx_test = rh_tx[split_idx + BUFFER_HOURS:]
+    print(f"    + Thanh Xuân Train: {len(X_tx_train):,} mẫu | Buffer: {BUFFER_HOURS}h | Test độc lập: {len(X_tx_test):,} mẫu.")
 
-    # 2. Nạp toàn bộ Siêu tập dữ liệu (109.120 mẫu)
+    # 2. Nạp toàn bộ Siêu tập dữ liệu và loại bỏ hoàn toàn phần Thanh Xuân Test khỏi Pha 1
     X_all, y_all, pm_raw_all, rh_all = load_csv_dataset(unified_csv)
     c_target_all = np.clip(y_all.flatten() / np.maximum(pm_raw_all, 1.0), 0.25, 1.05)[:, None]
-    print(f" -> Siêu tập dữ liệu hợp nhất (6 nguồn): {len(X_all):,} mẫu.")
+    n_external = max(0, len(X_all) - len(X_tx))
+    X_mega_train = X_all[:n_external]
+    c_mega_train = c_target_all[:n_external]
 
-    # Chuẩn hóa Min-Max
-    x_min = np.min(X_all, axis=0)
-    x_max = np.max(X_all, axis=0)
+    X_phase1_train = np.vstack([X_mega_train, X_tx_train])
+    c_phase1_train = np.vstack([c_mega_train, c_tx_train])
+    print(f" -> Siêu tập dữ liệu Pha 1 (đã loại bỏ Test/Buffer): {len(X_phase1_train):,} mẫu.")
+
+    # Chuẩn hóa Min-Max nghiêm ngặt trên tập Train (tuyệt đối không chạm vào X_tx_test)
+    train_combined = np.vstack([X_mega_train, X_tx_train])
+    x_min = np.min(train_combined, axis=0)
+    x_max = np.max(train_combined, axis=0)
     x_max = np.where(x_max == x_min, x_min + 1.0, x_max)
 
-    X_all_norm = (X_all - x_min) / (x_max - x_min)
+    X_all_norm = (X_phase1_train - x_min) / (x_max - x_min)
+    c_target_all = c_phase1_train
     X_tx_train_norm = (X_tx_train - x_min) / (x_max - x_min)
     X_tx_test_norm = (X_tx_test - x_min) / (x_max - x_min)
 
@@ -267,7 +276,7 @@ def main():
         "int8_flash_kb": round(total_p / 1024.0, 2),
         "domain_adaptation": "Hanoi_ThanhXuan_Multistation_Real",
         "training_phases": {
-            "phase1_pretraining_samples": len(X_all),
+            "phase1_pretraining_samples": len(X_phase1_train),
             "phase2_fine_tuning_samples": len(X_tx_train)
         },
         "metrics_overall_thanhxuan": {"r2": r2_p2, "mae": mae_p2, "rmse": rmse_p2},

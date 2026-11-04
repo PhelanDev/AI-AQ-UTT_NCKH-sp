@@ -149,3 +149,103 @@ def test_bug03_data_pipeline_scaler_sync():
     )
 
 
+def test_bug04_no_header_overwrite_and_strict_train_scaler(tmp_path):
+    """
+    BUG-04: Verify:
+    1. quantize_19k_int8.py outputs to model_data_19k.h and never overwrites esp/include/model_data.h.
+    2. train_robust_resmlp_19k.py does NOT use np.random.permutation for splitting, uses chronological
+       split with BUFFER_HOURS = 48, excludes test split from Phase 1 pre-training, and fits x_min/x_max
+       strictly on np.vstack([X_mega_train, X_tx_train]).
+    3. train_central_forecaster.py and train_central_autoencoder.py compute feat_min/feat_max and
+       min_48/max_48 strictly on the training slice (ts_train / train_raw) AFTER chronological splitting
+       with a 48h buffer.
+    """
+    import csv
+    from mlops.scripts.train_central_forecaster import prepare_time_series_data
+    from mlops.scripts.train_central_autoencoder import prepare_48d_multistation_dataset
+
+    # 1. Check quantize_19k_int8.py target header path and esp/include/model_data.h integrity
+    with open("mlops/scripts/quantize_19k_int8.py", "r", encoding="utf-8") as f:
+        quant19k_src = f.read()
+    assert '"model_data_19k.h"' in quant19k_src, (
+        "quantize_19k_int8.py must write to model_data_19k.h, not model_data.h"
+    )
+    assert 'os.path.join(base_dir, "..", "..", "esp", "include", "model_data.h")' not in quant19k_src, (
+        "quantize_19k_int8.py still overwrites esp/include/model_data.h"
+    )
+    with open("esp/include/model_data.h", "r", encoding="utf-8") as f:
+        header_src = f.read()
+    assert "#define TINYML_INPUT_DIM 8" in header_src and "FC_IN_WEIGHT" in header_src, (
+        "esp/include/model_data.h must remain the 8-feature MultiSensor header"
+    )
+
+    # 2. Check train_robust_resmlp_19k.py chronological split with 48h buffer & leakage-free Phase 1 / scaler
+    with open("mlops/scripts/train_robust_resmlp_19k.py", "r", encoding="utf-8") as f:
+        resmlp19k_src = f.read()
+    assert "np.random.permutation" not in resmlp19k_src, (
+        "train_robust_resmlp_19k.py must not use np.random.permutation on time-series data"
+    )
+    assert "BUFFER_HOURS = 48" in resmlp19k_src, (
+        "train_robust_resmlp_19k.py must use BUFFER_HOURS = 48"
+    )
+    assert "X_tx[split_idx + BUFFER_HOURS:]" in resmlp19k_src, (
+        "train_robust_resmlp_19k.py must slice X_tx_test after BUFFER_HOURS"
+    )
+    assert "np.vstack([X_mega_train, X_tx_train])" in resmlp19k_src, (
+        "train_robust_resmlp_19k.py must compute x_min/x_max strictly on np.vstack([X_mega_train, X_tx_train])"
+    )
+
+    # 3. Check train_central_forecaster.py chronological split + buffer + train-only scaler
+    with open("mlops/scripts/train_central_forecaster.py", "r", encoding="utf-8") as f:
+        forecaster_src = f.read()
+    assert "BUFFER_HOURS = 48" in forecaster_src, "train_central_forecaster.py missing BUFFER_HOURS = 48"
+    assert "ts_train = ts_np[:split_raw]" in forecaster_src, "train_central_forecaster.py missing ts_train slice"
+    assert "ts_train.min(axis=0)" in forecaster_src and "ts_train.max(axis=0)" in forecaster_src, (
+        "train_central_forecaster.py must compute feat_min/feat_max strictly on ts_train"
+    )
+
+    # Behavioral check: outlier in validation tail must NOT leak into feat_max
+    fake_hanoi_csv = tmp_path / "hanoi_leak_test.csv"
+    with open(fake_hanoi_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["PM25", "PM10", "Temperature", "Relative Humidity", "CO", "NO2", "Wind Speed", "Pressure"])
+        for i in range(400):
+            is_val_tail = i >= 360
+            pm25_val = 9999.0 if is_val_tail else 50.0 + (i % 20)
+            writer.writerow([pm25_val, 80.0, 25.0, 75.0, 100.0, 20.0, 2.5, 1012.0])
+
+    fc_data = prepare_time_series_data(hanoi_path=str(fake_hanoi_csv), seq_in=24, seq_out=24)
+    feat_min, feat_max = fc_data[-2], fc_data[-1]
+    assert feat_max[0] < 100.0, (
+        f"Data leakage detected in prepare_time_series_data: validation outlier leaked into feat_max[0]={feat_max[0]}"
+    )
+
+    # 4. Check train_central_autoencoder.py chronological split + buffer + train-only scaler
+    with open("mlops/scripts/train_central_autoencoder.py", "r", encoding="utf-8") as f:
+        ae_src = f.read()
+    assert "BUFFER_HOURS = 48" in ae_src, "train_central_autoencoder.py missing BUFFER_HOURS = 48"
+    assert "train_raw = arr_48[:split]" in ae_src, "train_central_autoencoder.py missing train_raw slice"
+    assert "train_raw.min(axis=0)" in ae_src and "train_raw.max(axis=0)" in ae_src, (
+        "train_central_autoencoder.py must compute min_48/max_48 strictly on train_raw"
+    )
+
+    # Behavioral check: outlier in validation tail must NOT leak into max_48
+    fake_ms_csv = tmp_path / "ms_leak_test.csv"
+    with open(fake_ms_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["time", "station_id", "pm25", "pm10", "temperature_c", "relative_humidity", "co", "no2"])
+        for t_idx in range(300):
+            is_val_tail = t_idx >= 260
+            pm25_val = 8888.0 if is_val_tail else 45.0 + (t_idx % 15)
+            t_str = f"2025-01-{(t_idx // 24) + 1:02d}T{t_idx % 24:02d}:00"
+            for s in range(1, 9):
+                writer.writerow([t_str, f"STATION_{s:02d}", pm25_val, 70.0, 24.0, 72.0, 120.0, 18.0])
+
+    ae_data = prepare_48d_multistation_dataset(csv_path=str(fake_ms_csv))
+    min_48, max_48 = ae_data[-2], ae_data[-1]
+    assert max_48[0] < 150.0, (
+        f"Data leakage detected in prepare_48d_multistation_dataset: validation outlier leaked into max_48[0]={max_48[0]}"
+    )
+
+
+

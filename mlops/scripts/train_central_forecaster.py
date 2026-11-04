@@ -72,24 +72,34 @@ def prepare_time_series_data(
     ts_np = np.array(time_series, dtype=np.float32)
     print(f" -> Thu thập được {len(ts_np)} mốc thời gian liên tục.")
 
-    # Min-Max Normalization
-    feat_min = np.min(ts_np, axis=0)
-    feat_max = np.max(ts_np, axis=0)
-    ts_norm = (ts_np - feat_min) / np.maximum(feat_max - feat_min, 1e-6)
+    # Chronological Split TRƯỚC KHI tính Min-Max với BUFFER_HOURS = 48
+    BUFFER_HOURS = 48
+    split_raw = int(0.75 * len(ts_np))
+    ts_train = ts_np[:split_raw]
+    ts_val = ts_np[split_raw + 48:]
 
-    # Tạo sliding windows
-    X_list, Y_list = [], []
-    total_len = len(ts_norm)
-    for i in range(total_len - seq_in - seq_out + 1):
-        x_window = ts_norm[i : i + seq_in]
-        y_window = ts_norm[i + seq_in : i + seq_in + seq_out, [0, 12]]
-        X_list.append(x_window)
-        Y_list.append(y_window)
+    # Min-Max Normalization nghiêm ngặt trên tập Train
+    feat_min = ts_train.min(axis=0)
+    feat_max = ts_train.max(axis=0)
+    denom = np.maximum(feat_max - feat_min, 1e-6)
+    ts_train_norm = (ts_train - feat_min) / denom
+    ts_val_norm = (ts_val - feat_min) / denom
 
-    X_arr = np.array(X_list, dtype=np.float32)
-    Y_arr = np.array(Y_list, dtype=np.float32)
+    # Tạo sliding windows riêng biệt trên ts_train_norm và ts_val_norm
+    def _build_windows(arr_norm):
+        X_list, Y_list = [], []
+        total_len = len(arr_norm)
+        for i in range(total_len - seq_in - seq_out + 1):
+            x_window = arr_norm[i : i + seq_in]
+            y_window = arr_norm[i + seq_in : i + seq_in + seq_out, [0, 12]]
+            X_list.append(x_window)
+            Y_list.append(y_window)
+        return np.array(X_list, dtype=np.float32), np.array(Y_list, dtype=np.float32)
 
-    return X_arr, Y_arr, feat_min, feat_max
+    X_train, Y_train = _build_windows(ts_train_norm)
+    X_val, Y_val = _build_windows(ts_val_norm)
+
+    return X_train, Y_train, X_val, Y_val, feat_min, feat_max
 
 def train_forecaster(
     epochs: int = 25,
@@ -99,13 +109,7 @@ def train_forecaster(
     save_onnx: str = "mlops/models/central_forecaster.onnx",
     save_params: str = "mlops/models/central_forecaster_params.json",
 ):
-    X, Y, feat_min, feat_max = prepare_time_series_data()
-    n_samples = len(X)
-
-    # Chronological Split (75% train, 25% val/test)
-    split = int(0.75 * n_samples)
-    X_train, Y_train = X[:split], Y[:split]
-    X_val, Y_val = X[split:], Y[split:]
+    X_train, Y_train, X_val, Y_val, feat_min, feat_max = prepare_time_series_data()
 
     train_ds = TensorDataset(torch.tensor(X_train), torch.tensor(Y_train))
     val_ds = TensorDataset(torch.tensor(X_val), torch.tensor(Y_val))
