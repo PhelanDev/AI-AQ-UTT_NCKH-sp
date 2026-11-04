@@ -30,8 +30,27 @@ from pi.simulator import (
     AtmosphericSimulator,
 )
 
-TINYML_X_MIN = np.array([0.508567, 0.0, -25.352833, 5.195367, -35.759926], dtype=np.float32)
-TINYML_X_MAX = np.array([761.359985, 96.060000, 44.449081, 100.0, 84.0], dtype=np.float32)
+def _load_tinyml_scaler() -> Tuple[np.ndarray, np.ndarray]:
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    root_dir = os.path.dirname(curr_dir)
+    params_path = os.path.join(root_dir, "mlops", "models", "robust_resmlp_19k_params.json")
+    if os.path.exists(params_path):
+        try:
+            with open(params_path, "r", encoding="utf-8") as f:
+                params = json.load(f)
+            return (
+                np.array(params["x_min"], dtype=np.float32),
+                np.array(params["x_max"], dtype=np.float32),
+            )
+        except Exception:
+            pass
+    return (
+        np.array([0.5, 0.0, -25.350000381469727, 5.199999809265137, -35.7599983215332], dtype=np.float32),
+        np.array([1216.800048828125, 93.06999969482422, 44.45000076293945, 100.0, 84.0], dtype=np.float32),
+    )
+
+
+TINYML_X_MIN, TINYML_X_MAX = _load_tinyml_scaler()
 
 def calc_dew_point_magnus_tetens(
     temp_c: Union[float, np.ndarray], rh_percent: Union[float, np.ndarray]

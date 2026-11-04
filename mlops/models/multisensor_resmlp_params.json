@@ -1,36 +1,49 @@
 {
-  "architecture": "MultiSensorResMLP",
+  "architecture": "MultiSensorResMLP_MultiNoise",
   "in_features": 8,
   "hidden_dim": 96,
   "num_params": 19585,
-  "metrics_all": {
-    "r2": 0.9565795063972473,
-    "mae": 4.804953575134277,
-    "rmse": 7.6225905418396
+  "validation_strategy": "Chronological_Split_48h_Buffer_Out_Of_Time",
+  "noise_layers": [
+    "Hysteresis_Kohler_Efflorescence_Deliquescence",
+    "Aerosol_Composition_Drift",
+    "Dual_Channel_Optical_Mismatch_Spikes",
+    "Thermal_Self_Heating_Board_Microclimate",
+    "Online_Batch_Data_Jittering"
+  ],
+  "metrics_overall_test": {
+    "r2": 0.9777882641066089,
+    "mae": 4.388750076293945,
+    "rmse": 6.536070823669434
   },
-  "metrics_humid": {
-    "r2": 0.9324857592582703,
-    "mae": 7.63872766494751,
-    "rmse": 10.101567268371582
+  "metrics_wet_season_test": {
+    "r2": 0.9130463004112244,
+    "mae": 6.103684425354004,
+    "rmse": 8.354531288146973
+  },
+  "metrics_raw_baseline": {
+    "r2": 0.5926448502624448,
+    "mae": 15.743555068969727,
+    "rmse": 27.99059295654297
   },
   "x_min": [
-    -0.07000000029802322,
+    0.10000000149011612,
     0.0,
-    0.15399999916553497,
-    -14.981666564941406,
+    0.21699999272823334,
+    -17.074443817138672,
     1.0,
     -49.66999816894531,
     353.0,
     0.0
   ],
   "x_max": [
-    3481.570068359375,
-    185.94000244140625,
+    3485.239990234375,
+    263.8699951171875,
     1.0,
-    49.72666549682617,
+    43.369998931884766,
     100.0,
-    28.979999542236328,
-    2200.0,
+    28.649999618530273,
+    2967.5,
     1089.0
   ]
 }
