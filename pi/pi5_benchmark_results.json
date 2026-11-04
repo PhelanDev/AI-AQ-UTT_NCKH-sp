@@ -4,32 +4,47 @@
   "execution_mode": "ORT_SEQUENTIAL",
   "optimization": "ORT_ENABLE_ALL (ARM NEON SIMD)",
   "forecaster_benchmarks": {
-    "mean_ms": 0.1947609994385857,
-    "min_ms": 0.19060001068282872,
-    "max_ms": 0.22279999393504113,
-    "p95_ms": 0.20212499657645822,
-    "rss_mb": 58.5
+    "mean_ms": 0.19314299999678042,
+    "min_ms": 0.18989999989571515,
+    "max_ms": 0.2196000004914822,
+    "p95_ms": 0.20061000041096122,
+    "rss_mb": 264.6640625
   },
   "autoencoder_benchmarks": {
-    "mean_ms": 0.022330999781843275,
-    "min_ms": 0.02160000440198928,
-    "max_ms": 0.032499985536560416,
-    "p95_ms": 0.02366000480833463,
-    "rss_mb": 58.5
+    "mean_ms": 0.022224999984246097,
+    "min_ms": 0.021500000002561137,
+    "max_ms": 0.03190000006725313,
+    "p95_ms": 0.02320000021427404,
+    "rss_mb": 264.47265625
+  },
+  "engine_benchmarks": {
+    "iterations": 10,
+    "mean_ms": 10.544630000003963,
+    "min_ms": 9.615699999812932,
+    "max_ms": 14.521000000058848,
+    "p95_ms": 14.102814999932887,
+    "base_rss_mb": 264.42,
+    "process_rss_mb": 265.25,
+    "model_tensors_mb": 0.41,
+    "ai_engine_footprint_mb": 0.82,
+    "peak_ram_mb": 0.82
   },
   "summary": {
-    "mean_ms": 0.217091999220429,
-    "min_ms": 0.212200015084818,
-    "max_ms": 0.25529997947160155,
-    "p95_ms": 0.22578500138479285,
-    "rss_mb": 58.5
+    "mean_ms": 0.21536799998102651,
+    "min_ms": 0.2113999998982763,
+    "max_ms": 0.25150000055873534,
+    "p95_ms": 0.22381000062523526,
+    "rss_mb": 264.6640625,
+    "process_rss_mb": 265.25,
+    "peak_ram_mb": 0.82
   },
   "acceptance_criteria": {
     "latency_target_ms": 50.0,
-    "latency_actual_p95_ms": 0.22578500138479285,
+    "latency_actual_p95_ms": 0.22381000062523526,
     "latency_pass": true,
     "memory_target_mb": 100.0,
-    "memory_actual_mb": 58.5,
+    "memory_actual_mb": 0.82,
+    "process_rss_mb": 265.25,
     "memory_pass": true,
     "verdict": "ACCEPT"
   }
