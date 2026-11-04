@@ -84,8 +84,71 @@ class CentralAIEngine:
         self.classifier = PhysicalSignatureClassifier()
         self.edge_calibrator = TinyMLEdgeCalibrator()
 
+        self.forecaster_weights = forecaster_weights
+        self.autoencoder_weights = autoencoder_weights
+        self._load_scaler_params()
+
         self.onnx_forecaster_session = None
         self.onnx_autoencoder_session = None
+
+    def _load_scaler_params(self) -> None:
+        """Nạp tham số chuẩn hóa Min-Max và phân phối sai số nền từ JSON."""
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+        fc_params_path = "mlops/models/central_forecaster_params.json"
+        if self.forecaster_weights and self.forecaster_weights.endswith(".pt"):
+            fc_params_path = self.forecaster_weights[:-3] + "_params.json"
+        if not os.path.exists(fc_params_path):
+            alt_fc = os.path.join(repo_root, fc_params_path)
+            if os.path.exists(alt_fc):
+                fc_params_path = alt_fc
+
+        self.feat_min = np.array(
+            [1.0, 1.3, 8.6, 17.0, -5.6, 423.5, 97.0, -4.5, -4.8, -1.0, -1.0, 994.0, 2.0, 1.0],
+            dtype=np.float32,
+        )
+        self.feat_max = np.array(
+            [446.0, 604.0, 40.0, 100.0, 29.6, 24344.3, 1413.0, 4.2, 4.6, 1.0, 1.0, 1033.0, 496.0, 1.0],
+            dtype=np.float32,
+        )
+        if os.path.exists(fc_params_path):
+            with open(fc_params_path, "r", encoding="utf-8") as f:
+                fc_meta = json.load(f)
+            if "feat_min" in fc_meta and "feat_max" in fc_meta:
+                self.feat_min = np.array(fc_meta["feat_min"], dtype=np.float32)
+                self.feat_max = np.array(fc_meta["feat_max"], dtype=np.float32)
+
+        ae_params_path = "mlops/models/central_autoencoder_params.json"
+        if self.autoencoder_weights and self.autoencoder_weights.endswith(".pt"):
+            ae_params_path = self.autoencoder_weights[:-3] + "_params.json"
+        if not os.path.exists(ae_params_path):
+            alt_ae = os.path.join(repo_root, ae_params_path)
+            if os.path.exists(alt_ae):
+                ae_params_path = alt_ae
+
+        self.ae_min_48 = np.tile(
+            np.array([10.7, 10.7, 20.4, 43.0, 654.0, 103.9], dtype=np.float32), 8
+        )
+        self.ae_max_48 = np.tile(
+            np.array([285.0, 290.6, 35.3, 100.0, 8673.6, 544.3], dtype=np.float32), 8
+        )
+        baseline_mean = 0.005
+        baseline_std = 0.015
+        if os.path.exists(ae_params_path):
+            with open(ae_params_path, "r", encoding="utf-8") as f:
+                ae_meta = json.load(f)
+            if "min_48" in ae_meta and "max_48" in ae_meta:
+                self.ae_min_48 = np.array(ae_meta["min_48"], dtype=np.float32)
+                self.ae_max_48 = np.array(ae_meta["max_48"], dtype=np.float32)
+            mean_err = ae_meta.get("mean_error", 0.005)
+            std_err = ae_meta.get("std_error", 0.006)
+            baseline_mean = float(np.mean(mean_err))
+            baseline_std = max(float(np.mean(std_err)), 0.015)
+
+        self.anomaly_detector.mu_ema = baseline_mean
+        self.anomaly_detector.var_ema = baseline_std ** 2
+        self.anomaly_detector.initialized = True
+        self.anomaly_detector.error_history = [baseline_mean] * 20
 
     def export_models_to_onnx(
         self,
@@ -168,47 +231,140 @@ class CentralAIEngine:
         Xử lý 1 khung đo tổng hợp thời gian thực gửi từ mạng lưới trạm về Pi 5.
 
         Args:
-            sliding_window_history: Ma trận lịch sử nồng độ PM2.5 hình dạng (T_steps, 8_stations).
+            sliding_window_history: Ma trận lịch sử nồng độ PM2.5 hình dạng (T_steps, 8_stations) hoặc (8_stations, T_steps).
             current_features_48d: Mảng đặc trưng đo lường hiện tại (48 chiều = 8 trạm x 6 kênh).
             dt_s: Bước thời gian lấy mẫu.
 
         Returns:
             Dict chứa toàn bộ kết quả phân tích: Vector gió, Nguồn ô nhiễm, Dự báo 24h, Bất thường.
         """
+        arr_a = np.asarray(sliding_window_history, dtype=np.float32)
+        arr_b = np.asarray(current_features_48d, dtype=np.float32)
+
+        # Hỗ trợ tự động nhận diện thứ tự tham số nếu caller truyền (current_48d, history_8x24)
+        if arr_a.size == 48 and (arr_a.ndim == 1 or 1 in arr_a.shape) and arr_b.ndim == 2 and arr_b.size != 48:
+            arr_a, arr_b = arr_b, arr_a
+
+        hist_arr = np.nan_to_num(arr_a, nan=0.0, posinf=500.0, neginf=0.0)
+        curr_48d = np.nan_to_num(arr_b, nan=0.0, posinf=500.0, neginf=0.0).reshape(48)
+
+        if hist_arr.ndim == 2 and hist_arr.shape[0] == self.n_stations and hist_arr.shape[1] != self.n_stations:
+            hist_arr = hist_arr.T
 
         spatial_results = self.spatial_engine.analyze(
-            sliding_window_history, dt_s=dt_s, max_lag=min(40, sliding_window_history.shape[0] // 2)
+            hist_arr, dt_s=dt_s, max_lag=min(40, max(1, hist_arr.shape[0] // 2))
         )
 
-        t_steps = min(24, sliding_window_history.shape[0])
-        recent_pm = sliding_window_history[-t_steps:]
+        st_mat = curr_48d.reshape(self.n_stations, 6)
+        pm_station_mean = float(np.mean(st_mat[:, 0]))
+        pm10_station_mean = float(np.mean(st_mat[:, 1]))
+        pm10_ratio = (
+            float(np.clip(pm10_station_mean / pm_station_mean, 1.0, 2.5))
+            if pm_station_mean > 1.0 and pm10_station_mean > 1.0
+            else 1.35
+        )
+
+        temp_mean = float(np.mean(st_mat[:, 2]))
+        temp_c = temp_mean if (-10.0 <= temp_mean <= 60.0 and temp_mean != 0.0) else 24.5
+
+        rh_mean = float(np.mean(st_mat[:, 3]))
+        rh_pct = float(np.clip(rh_mean, 5.0, 100.0)) if (5.0 <= rh_mean <= 105.0) else 78.0
+
+        a_mt, b_mt = 17.27, 237.7
+        alpha_mt = ((a_mt * temp_c) / (b_mt + temp_c)) + math.log(max(1.0, min(100.0, rh_pct)) / 100.0)
+        dp_c = (b_mt * alpha_mt) / (a_mt - alpha_mt)
+
+        col4_mean = float(np.mean(st_mat[:, 4]))
+        col5_mean = float(np.mean(st_mat[:, 5]))
+        if 0.0 < col4_mean < 100.0:
+            wind_u = col4_mean * math.cos(math.radians(col5_mean))
+            wind_v = col4_mean * math.sin(math.radians(col5_mean))
+        else:
+            wind_u = float(spatial_results["wind_vector"][0])
+            wind_v = float(spatial_results["wind_vector"][1])
+
+        t_steps = min(24, hist_arr.shape[0])
+        recent_pm = hist_arr[-t_steps:]
         mean_pm = np.mean(recent_pm, axis=1)
 
         feat_in = np.zeros((1, 24, 14), dtype=np.float32)
+        base_hour = time.localtime().tm_hour
         for t in range(t_steps):
             idx = 24 - t_steps + t
-            feat_in[0, idx, 0] = mean_pm[t]
-            feat_in[0, idx, 1] = mean_pm[t] * 1.35
-            feat_in[0, idx, 2] = 24.5
-            feat_in[0, idx, 3] = 78.0
-            feat_in[0, idx, 7] = spatial_results["wind_vector"][0]
-            feat_in[0, idx, 8] = spatial_results["wind_vector"][1]
-            hour = (time.localtime().tm_hour + t) % 24
+            pm_t = max(0.0, float(mean_pm[t]))
+            hour = (base_hour + t) % 24
+            co2_t = col4_mean if col4_mean >= 150.0 else (pm_t * 18.0 + 410.0)
+            voc_t = col5_mean if col4_mean >= 150.0 else (pm_t * 2.1 + 90.0)
+            aqi_t = float(calc_vn_aqi_pm25(pm_t))
+
+            feat_in[0, idx, 0] = pm_t
+            feat_in[0, idx, 1] = pm_t * pm10_ratio
+            feat_in[0, idx, 2] = temp_c
+            feat_in[0, idx, 3] = rh_pct
+            feat_in[0, idx, 4] = dp_c
+            feat_in[0, idx, 5] = co2_t
+            feat_in[0, idx, 6] = voc_t
+            feat_in[0, idx, 7] = wind_u
+            feat_in[0, idx, 8] = wind_v
             feat_in[0, idx, 9] = math.sin(2.0 * math.pi * hour / 24.0)
             feat_in[0, idx, 10] = math.cos(2.0 * math.pi * hour / 24.0)
+            feat_in[0, idx, 11] = 1013.2
+            feat_in[0, idx, 12] = aqi_t
+            feat_in[0, idx, 13] = 1.0
 
-        with torch.no_grad():
-            forecast_out = self.forecaster(torch.tensor(feat_in, device=self.device)).cpu().numpy()[0]
+        if t_steps < 24 and t_steps > 0:
+            feat_in[0, : 24 - t_steps, :] = feat_in[0, 24 - t_steps, :]
 
-        x_ae = np.asarray(current_features_48d, dtype=np.float32).reshape(1, 48)
-        with torch.no_grad():
-            rec_ae, z_latent = self.autoencoder(torch.tensor(x_ae, device=self.device))
-            err_vec = (x_ae - rec_ae.cpu().numpy()).ravel()
+        feat_denom = np.maximum(self.feat_max - self.feat_min, 1e-6)
+        feat_in_norm = (feat_in - self.feat_min) / feat_denom
+        feat_in_norm[:, :, 1:] = np.clip(feat_in_norm[:, :, 1:], 0.0, 1.0)
+        feat_in_norm[:, :, 0] = np.clip(feat_in_norm[:, :, 0], 0.0, 2.5)
+
+        if self.use_onnx and self.onnx_forecaster_session is not None:
+            forecast_norm = self.onnx_forecaster_session.run(
+                None, {"input_timeseries": feat_in_norm}
+            )[0][0]
+        else:
+            with torch.no_grad():
+                forecast_norm = (
+                    self.forecaster(torch.tensor(feat_in_norm, device=self.device))
+                    .cpu()
+                    .numpy()[0]
+                )
+
+        pm_range = float(self.feat_max[0] - self.feat_min[0])
+        aqi_range = float(self.feat_max[12] - self.feat_min[12])
+        pm25_phys = np.maximum(0.0, forecast_norm[:, 0] * pm_range + float(self.feat_min[0]))
+        aqi_head = np.maximum(0.0, forecast_norm[:, 1] * aqi_range + float(self.feat_min[12]))
+        aqi_from_pm = np.array([float(calc_vn_aqi_pm25(float(p))) for p in pm25_phys], dtype=np.float32)
+        aqi_phys = 0.5 * aqi_head + 0.5 * aqi_from_pm
+
+        x_ae_mat = st_mat.copy()
+        if 0.0 <= col4_mean < 150.0:
+            x_ae_mat[:, 4] = np.maximum(654.0, x_ae_mat[:, 0] * 14.0 + 420.0)
+            x_ae_mat[:, 5] = np.maximum(105.0, x_ae_mat[:, 0] * 1.8 + 100.0)
+
+        x_ae_flat = x_ae_mat.reshape(1, 48)
+        ae_denom = np.maximum(self.ae_max_48 - self.ae_min_48, 1e-6)
+        x_ae_norm = (x_ae_flat - self.ae_min_48) / ae_denom
+        x_ae_norm = np.where(x_ae_flat >= 0.0, np.maximum(0.0, x_ae_norm), x_ae_norm)
+        x_ae_norm = np.clip(x_ae_norm, -10.0, 10.0).astype(np.float32)
+
+        if self.use_onnx and self.onnx_autoencoder_session is not None:
+            rec_ae_np = self.onnx_autoencoder_session.run(
+                None, {"input_features_48d": x_ae_norm}
+            )[0]
+        else:
+            with torch.no_grad():
+                rec_ae, _ = self.autoencoder(torch.tensor(x_ae_norm, device=self.device))
+                rec_ae_np = rec_ae.cpu().numpy()
+
+        err_vec = (x_ae_norm - rec_ae_np).ravel()
 
         anom_score = self.anomaly_detector.compute_score(err_vec)
         is_anom, thresh, _ = self.anomaly_detector.update_and_detect(anom_score)
 
-        pm_per_station = current_features_48d.reshape(8, -1)[:, 0]
+        pm_per_station = st_mat[:, 0]
         stations_affected = int(np.sum(pm_per_station > 65.0))
         gases = ["pm25"]
         if np.any(pm_per_station > 120.0):
@@ -221,6 +377,11 @@ class CentralAIEngine:
             is_anomaly=is_anom,
         )
 
+        pm25_list = [float(p) for p in pm25_phys]
+        aqi_list = [float(a) for a in aqi_phys]
+        pm25_6_12_24 = [pm25_list[5], pm25_list[11], pm25_list[23]]
+        aqi_6_12_24 = [aqi_list[5], aqi_list[11], aqi_list[23]]
+
         return {
             "timestamp": time.time(),
             "spatial_dispersion": {
@@ -231,13 +392,31 @@ class CentralAIEngine:
                 "confidence": spatial_results["localization_confidence"],
             },
             "forecast_24h": {
-                "pm25_pred": [float(p) for p in forecast_out[:, 0]],
-                "aqi_pred": [float(a) for a in forecast_out[:, 1]],
-                "peak_pm25_horizon_hours": int(np.argmax(forecast_out[:, 0]) + 1),
-                "peak_pm25_value": float(np.max(forecast_out[:, 0])),
+                "pm25_pred": pm25_list,
+                "aqi_pred": aqi_list,
+                "pm25_6h_12h_24h": pm25_6_12_24,
+                "aqi_6h_12h_24h": aqi_6_12_24,
+                "peak_pm25_horizon_hours": int(np.argmax(pm25_phys) + 1),
+                "peak_pm25_value": float(np.max(pm25_phys)),
+            },
+            "forecast": {
+                "pm25_6h_12h_24h": pm25_6_12_24,
+                "aqi_6h_12h_24h": aqi_6_12_24,
+                "pm25_pred": pm25_list,
+                "aqi_pred": aqi_list,
             },
             "anomaly_diagnostics": {
-                "is_anomaly": is_anom,
+                "is_anomaly": bool(is_anom),
+                "reconstruction_score": float(anom_score),
+                "anomaly_score": float(anom_score),
+                "dynamic_threshold": float(thresh),
+                "signature_class_id": cid,
+                "signature_class_name": cname,
+                "class_probabilities": probs,
+            },
+            "anomaly": {
+                "is_anomaly": bool(is_anom),
+                "anomaly_score": float(anom_score),
                 "reconstruction_score": float(anom_score),
                 "dynamic_threshold": float(thresh),
                 "signature_class_id": cid,
