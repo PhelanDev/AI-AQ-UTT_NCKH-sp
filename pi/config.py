@@ -1,7 +1,9 @@
 """
 ai/central/config.py
-Configuration, Station Coordinates, Spatial Topology, and Atmospheric Constants
+Configuration, Prototype Station, Topology, and Atmospheric Constants
 for the Central Neural Network AI Engine on Raspberry Pi 5 (8GB RAM).
+Hỗ trợ chế độ thử nghiệm Prototype 1 trạm thực tế (Hardware Demo Node)
+kết hợp cơ chế mở rộng mô phỏng đa điểm (Scalability Simulation).
 """
 
 from dataclasses import dataclass
@@ -69,11 +71,19 @@ class StationInfo:
     alt_m: float
     environment: str
 
+# ==============================================================================
+# DANH MỤC TRẠM QUAN TRẮC:
+# - STATION_01: Nút cảm biến Prototype phần cứng thực tế (Hardware Demo Node)
+# - STATION_02 đến STATION_08: Tọa độ mô phỏng phục vụ nghiên cứu mở rộng quy mô
+# ==============================================================================
+PROTOTYPE_STATION_ID: str = "STATION_01"
+IS_PROTOTYPE_DEMO: bool = True
+
 _RAW_STATIONS_DATA = [
     (
         "STATION_01",
         "HUS_NguyenTrai",
-        "ĐH Khoa học Tự nhiên (334 Nguyễn Trãi)",
+        "Trạm Cảm Biến Prototype (334 Nguyễn Trãi - ĐH KHTN)",
         20.9982,
         105.8065,
         18.0,
@@ -82,7 +92,7 @@ _RAW_STATIONS_DATA = [
     (
         "STATION_02",
         "CV_NhanChinh",
-        "Công viên Nhân Chính (Khuất Duy Tiến / Lê Văn Lương)",
+        "Điểm mô phỏng quy hoạch (CV Nhân Chính)",
         20.9997,
         105.8035,
         16.0,
@@ -91,7 +101,7 @@ _RAW_STATIONS_DATA = [
     (
         "STATION_03",
         "KhuongDinh",
-        "PAM Air Khương Đình (Vũ Tông Phan / Sông Tô Lịch)",
+        "Điểm mô phỏng quy hoạch (Khương Đình)",
         20.9885,
         105.8192,
         14.0,
@@ -100,7 +110,7 @@ _RAW_STATIONS_DATA = [
     (
         "STATION_04",
         "NguyenTuan",
-        "Ngã tư Nguyễn Tuân - Ngụy Như Kon Tum",
+        "Điểm mô phỏng quy hoạch (Nguyễn Tuân)",
         21.0028,
         105.8020,
         20.0,
@@ -109,7 +119,7 @@ _RAW_STATIONS_DATA = [
     (
         "STATION_05",
         "KimGiang",
-        "Kim Giang - Hoàng Đạo Thành",
+        "Điểm mô phỏng quy hoạch (Kim Giang)",
         20.9820,
         105.8125,
         15.0,
@@ -118,7 +128,7 @@ _RAW_STATIONS_DATA = [
     (
         "STATION_06",
         "TrungHoa",
-        "Nút giao Trung Hòa - Trần Duy Hưng",
+        "Điểm mô phỏng quy hoạch (Trung Hòa)",
         21.0075,
         105.7950,
         17.0,
@@ -127,7 +137,7 @@ _RAW_STATIONS_DATA = [
     (
         "STATION_07",
         "ThanhXuanBac",
-        "KĐT Thanh Xuân Bắc (Khuất Duy Tiến)",
+        "Điểm mô phỏng quy hoạch (Thanh Xuân Bắc)",
         20.9940,
         105.7975,
         16.0,
@@ -136,7 +146,7 @@ _RAW_STATIONS_DATA = [
     (
         "STATION_08",
         "CentralHub",
-        "Trung tâm Điều hành AI (UBND Quận / Hub Server)",
+        "Trạm Trung Tâm Điều Hành (Gateway Pi 5)",
         20.9930,
         105.8080,
         22.0,

@@ -318,7 +318,7 @@ class AirQualityDataPipeline:
         seed: int = 42,
         anomalies: Optional[List[AnomalyScenario]] = None,
     ) -> Dict[str, np.ndarray]:
-        """Run atmospheric simulation and apply edge calibration across all 8 stations."""
+        """Run atmospheric simulation and apply edge calibration across prototype and simulation network stations."""
         sim = AtmosphericSimulator(dt_s=sample_interval_s, seed=seed)
         if anomalies:
             for anom in anomalies:

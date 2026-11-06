@@ -109,7 +109,7 @@ def estimate_wind_and_dispersion(
 
     Args:
         tau_star_matrix: Ma trận độ trễ (giây) shape (N, N).
-        coordinates: Tọa độ UTM (x_east, y_north) shape (N, 2). Mặc định lấy theo lưới 8 trạm Thanh Xuân.
+        coordinates: Tọa độ UTM (x_east, y_north) shape (N, 2). Mặc định lấy theo lưới trạm Prototype và tọa độ quy hoạch mở rộng.
         r_matrix: Ma trận hệ số tương quan R_ij shape (N, N).
         r_thresh: Ngưỡng tương quan tối thiểu để đưa cặp trạm vào WLS.
         weights: Mảng trọng số tùy biến (tùy chọn).

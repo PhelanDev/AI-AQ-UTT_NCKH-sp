@@ -246,8 +246,8 @@ class CentralAIEngine:
         Xử lý 1 khung đo tổng hợp thời gian thực gửi từ mạng lưới trạm về Pi 5.
 
         Args:
-            sliding_window_history: Ma trận lịch sử nồng độ PM2.5 hình dạng (T_steps, 8_stations) hoặc (8_stations, T_steps).
-            current_features_48d: Mảng đặc trưng đo lường hiện tại (48 chiều = 8 trạm x 6 kênh).
+            sliding_window_history: Ma trận lịch sử nồng độ PM2.5 hình dạng (T_steps, N_stations) hoặc (N_stations, T_steps).
+            current_features_48d: Mảng đặc trưng đo lường hiện tại (hỗ trợ từ 1 trạm prototype lên mạng lưới mở rộng 48 chiều = 8 trạm x 6 kênh).
             dt_s: Bước thời gian lấy mẫu.
 
         Returns:

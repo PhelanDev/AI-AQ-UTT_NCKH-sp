@@ -1,7 +1,7 @@
 """
 pi package
 Central Neural Network AI Engine on Raspberry Pi 5 (8GB RAM)
-NCKH Multi-Station Air Quality Monitoring & Spatial-Temporal Edge-Central System
+NCKH Air Quality Monitoring Prototype System (TinyML Edge Node & Raspberry Pi 5 Gateway)
 """
 
 from pi.config import (

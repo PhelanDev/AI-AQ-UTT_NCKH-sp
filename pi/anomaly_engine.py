@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader, TensorDataset
 class MultiStationDeepAutoencoder(nn.Module):
     """
     Mạng Nơ-ron Deep Autoencoder Đa trạm với nút thắt cổ chai đối xứng (Symmetric Bottleneck).
-    Nén đa biến không gian - môi trường từ 8 trạm (D_in) xuống không gian ẩn z (16 chiều).
+    Nén đa biến môi trường từ trạm quan trắc (hỗ trợ scale lên mạng lưới đa trạm) xuống không gian ẩn z (16 chiều).
     Tổng số tham số siêu nhỏ gọn (< 15,000 params), chạy thời gian thực trên Raspberry Pi 5.
     """
 
