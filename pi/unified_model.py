@@ -18,14 +18,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from pi.forecasting_engine import ChausalDilatedConvBlock, TemporalAttention
+from pi.forecasting_engine import ChausalDilatedConvBlock, TemporalAttention, SeriesDecomp
 
 class HierarchicalCentralAI(nn.Module):
     """
-    Kiến trúc AI Phân Tầng Thống Nhất (Hierarchical Unified Central AI v2.3):
+    Kiến trúc AI Phân Tầng Thống Nhất (Hierarchical Unified Central AI v3.1):
     - TẦNG 0 (Shared Backbone): Dilated TCN + Bi-GRU (32) + Temporal Attention + Dual-Pooling
     - TẦNG 1 (Anomaly Head): Tái tạo đặc trưng thời điểm hiện tại x_t (16 dims)
-    - TẦNG 2 (Forecast Head): Dự báo đa bước 24h đồng thời cho PM2.5 & VN-AQI (24x2 dims)
+    - TẦNG 2 (Forecast Head): RevIN + DLinear Trend/Seasonal + Non-linear Residual Delta (24x2 dims)
     """
 
     def __init__(
@@ -40,6 +40,7 @@ class HierarchicalCentralAI(nn.Module):
         self.in_features = in_features
         self.out_steps = out_steps
         self.out_targets = out_targets
+        self.eps = 1e-5
 
         # === TẦNG 0: SHARED BACKBONE ===
         self.feature_drop = nn.Dropout1d(p=0.15)
@@ -66,21 +67,26 @@ class HierarchicalCentralAI(nn.Module):
             nn.Linear(32, in_features),
         )
 
-        # === TẦNG 2: 24H FORECASTING HEAD (DIURNAL RESIDUAL BASELINE + MULTIMODAL DELTA) ===
-        self.hist_proj = nn.Linear(out_steps, out_steps)
+        # === TẦNG 2: 24H FORECASTING HEAD (RevIN + DLinear Trend-Seasonal + Multimodal Delta) ===
+        self.decomp = SeriesDecomp(kernel_size=5)
+        self.linear_trend = nn.Linear(out_steps, out_steps)
+        self.linear_seasonal = nn.Linear(out_steps, out_steps)
+
+        # Khởi tạo trọng số DLinear ưu tiên suy giảm hàm mũ (AR Exponential Decay)
         with torch.no_grad():
-            self.hist_proj.weight.zero_()
-            self.hist_proj.bias.zero_()
+            self.linear_trend.weight.zero_()
+            self.linear_trend.bias.zero_()
+            self.linear_seasonal.weight.zero_()
+            self.linear_seasonal.bias.zero_()
             for h in range(out_steps):
                 decay = math.exp(-h / 12.0)
-                self.hist_proj.weight[h, 23] = decay
-                if h < 24:
-                    self.hist_proj.weight[h, h] += (1.0 - decay)
+                self.linear_trend.weight[h, out_steps - 1] = decay
+                self.linear_seasonal.weight[h, h % out_steps] += (1.0 - decay)
 
         self.forecast_head = nn.Sequential(
             nn.Linear(gru_hidden * 2, 48),
             nn.SiLU(),
-            nn.Dropout(p=0.25),
+            nn.Dropout(p=0.20),
             nn.Linear(48, out_steps * out_targets),
         )
         nn.init.zeros_(self.forecast_head[-1].bias)
@@ -88,7 +94,7 @@ class HierarchicalCentralAI(nn.Module):
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Forward Pass đa nhiệm v2.3:
+        Forward Pass đa nhiệm v3.1:
         Args:
             x: Tensor đầu vào shape (B, 24, 16) chuỗi thời gian 24h qua.
         Returns:
@@ -115,14 +121,27 @@ class HierarchicalCentralAI(nn.Module):
         # 3. Nhánh Tái tạo Dị thường (Head 1)
         recon_current = self.recon_head(context_z)
 
-        # 4. Nhánh Dự báo 24h Tương lai (Head 2)
-        hist_pm25 = x[:, :, 0:1] # (B, 24, 1)
-        hist_aqi = x[:, :, 15:16] if f_dim >= 16 else x[:, :, 12:13] # (B, 24, 1)
-        hist_targets = torch.cat([hist_pm25, hist_aqi], dim=-1).transpose(1, 2)
-        diurnal_base = self.hist_proj(hist_targets).transpose(1, 2)
+        # 4. Nhánh Dự báo 24h Tương lai (Head 2 với RevIN + DLinear)
+        idx_aqi = 15 if self.in_features >= 16 else 12
+        x_targets = torch.stack([x[:, :, 0], x[:, :, idx_aqi]], dim=-1)  # (B, 24, 2)
 
-        pred_delta = self.forecast_head(context_z).view(b, self.out_steps, self.out_targets)
-        # Bỏ dying ReLU, cho phép gradient tuyến tính thông thoáng
-        forecast_24h = diurnal_base + pred_delta
+        # Target-RevIN: Chuẩn hóa cửa sổ chống dịch chuyển phân phối theo mùa & vùng
+        mu = x_targets.mean(dim=1, keepdim=True)  # (B, 1, 2)
+        sigma = torch.sqrt(torch.var(x_targets, dim=1, keepdim=True, unbiased=False) + self.eps)  # (B, 1, 2)
+        x_targets_norm = (x_targets - mu) / sigma
+
+        # DLinear Trend & Seasonal Projection
+        seasonal, trend = self.decomp(x_targets_norm)
+        trend_pred = self.linear_trend(trend.transpose(1, 2)).transpose(1, 2)
+        seasonal_pred = self.linear_seasonal(seasonal.transpose(1, 2)).transpose(1, 2)
+        dlinear_base_norm = trend_pred + seasonal_pred  # (B, 24, 2)
+
+        # Multimodal Non-linear Delta từ Backbone Context
+        pred_delta_norm = self.forecast_head(context_z).view(b, self.out_steps, self.out_targets)
+
+        # RevIN De-normalization & Physical Bounding
+        forecast_norm = dlinear_base_norm + pred_delta_norm
+        forecast_24h = forecast_norm * sigma + mu
+        forecast_24h = F.relu(forecast_24h)
 
         return forecast_24h, recon_current

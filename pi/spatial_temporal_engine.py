@@ -37,7 +37,10 @@ def compute_cross_correlation_matrix(
     if arr.ndim != 2:
         raise ValueError(f"data_matrix must be 2D, got shape {arr.shape}")
 
-    if arr.shape[0] < arr.shape[1] and arr.shape[0] <= len(STATION_IDS):
+    # Đảm bảo mảng có shape (T, N_stations). Chỉ chuyển vị khi trục 0 là danh sách trạm và trục 1 không phải
+    if arr.shape[0] == len(STATION_IDS) and arr.shape[1] != len(STATION_IDS):
+        arr = arr.T
+    elif arr.shape[0] < arr.shape[1] and arr.shape[1] != len(STATION_IDS) and arr.shape[0] <= len(STATION_IDS):
         arr = arr.T
 
     T, N = arr.shape
@@ -48,41 +51,46 @@ def compute_cross_correlation_matrix(
     stds = np.where(stds < 1e-8, 1e-8, stds)
     norm_data = (arr - means) / stds
 
+    lags = np.arange(-max_lag, max_lag + 1)
+    num_lags = len(lags)
+    zero_idx = max_lag
+
+    all_corrs = np.zeros((num_lags, N, N), dtype=np.float64)
+
+    # Vectorized computation for lag 0
+    c0 = norm_data.T @ norm_data
+    e0 = np.sum(norm_data**2, axis=0)
+    denom0 = np.sqrt(e0[:, None] * e0[None, :]) + 1e-12
+    all_corrs[zero_idx] = c0 / denom0
+
+    # Vectorized computation for positive lags and transpose-symmetry for negative lags
+    for k in range(1, max_lag + 1):
+        x = norm_data[:T - k, :]
+        y = norm_data[k:, :]
+        ck = x.T @ y
+        ex = np.sum(x**2, axis=0)
+        ey = np.sum(y**2, axis=0)
+        denom_k = np.sqrt(ex[:, None] * ey[None, :]) + 1e-12
+        corr_k = ck / denom_k
+        all_corrs[zero_idx + k] = corr_k
+        all_corrs[zero_idx - k] = corr_k.T
+
+    best_idx = np.argmax(all_corrs, axis=0)
+    best_lags = lags[best_idx]
+    max_corrs = np.take_along_axis(all_corrs, best_idx[None, :, :], axis=0)[0]
+    max_corrs = np.clip(max_corrs, -1.0, 1.0)
+
     R_matrix = np.eye(N, dtype=np.float64)
     tau_star_matrix = np.zeros((N, N), dtype=np.float64)
 
-    lags = np.arange(-max_lag, max_lag + 1)
+    iu = np.triu_indices(N, k=1)
+    r_vals = max_corrs[iu]
+    tau_vals = best_lags[iu] * dt_s
 
-    for i in range(N):
-        sig_i = norm_data[:, i]
-        for j in range(i + 1, N):
-            sig_j = norm_data[:, j]
-
-            best_corr = -2.0
-            best_lag = 0
-
-            for lag in lags:
-                if lag >= 0:
-                    s_i = sig_i[:T - lag] if lag > 0 else sig_i
-                    s_j = sig_j[lag:]
-                else:
-                    s_i = sig_i[-lag:]
-                    s_j = sig_j[:T + lag]
-
-                denom = np.sqrt(np.sum(s_i**2) * np.sum(s_j**2)) + 1e-12
-                corr = float(np.sum(s_i * s_j) / denom)
-
-                if corr > best_corr:
-                    best_corr = corr
-                    best_lag = lag
-
-            best_corr = float(np.clip(best_corr, -1.0, 1.0))
-            tau_sec = float(best_lag * dt_s)
-
-            R_matrix[i, j] = best_corr
-            R_matrix[j, i] = best_corr
-            tau_star_matrix[i, j] = tau_sec
-            tau_star_matrix[j, i] = -tau_sec
+    R_matrix[iu] = r_vals
+    R_matrix[(iu[1], iu[0])] = r_vals
+    tau_star_matrix[iu] = tau_vals
+    tau_star_matrix[(iu[1], iu[0])] = -tau_vals
 
     return R_matrix, tau_star_matrix
 

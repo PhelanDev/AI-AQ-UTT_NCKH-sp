@@ -7,10 +7,16 @@ Thuộc Đề tài NCKH Quan trắc Chất lượng Không khí Đa điểm Tiny
 
 import json
 import os
+import sys
 import time
-from typing import Dict, List, Tuple
+from pathlib import Path
+from typing import Dict, List, Tuple, Union
 import numpy as np
 import onnxruntime as ort
+
+repo_root = str(Path(__file__).resolve().parent.parent)
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
 
 try:
     import psutil
@@ -103,7 +109,17 @@ def run_pi5_benchmark(
 
     from pi.central_engine import CentralAIEngine
 
-    engine = CentralAIEngine()
+    fc_onnx = _resolve_model_path("mlops/models/central_forecaster.onnx")
+    ae_onnx = _resolve_model_path("mlops/models/central_autoencoder.onnx")
+    engine = CentralAIEngine(use_onnx=True)
+    if not (os.path.exists(fc_onnx) and os.path.exists(ae_onnx)):
+        engine.export_models_to_onnx(fc_onnx, ae_onnx)
+
+    sess_opts = create_cortex_a76_session_options(num_threads=num_threads)
+    if os.path.exists(fc_onnx):
+        engine.onnx_forecaster_session = ort.InferenceSession(fc_onnx, sess_options=sess_opts, providers=["CPUExecutionProvider"])
+    if os.path.exists(ae_onnx):
+        engine.onnx_autoencoder_session = ort.InferenceSession(ae_onnx, sess_options=sess_opts, providers=["CPUExecutionProvider"])
 
     forecaster_params_mb = sum(
         p.numel() * p.element_size() for p in engine.forecaster.parameters()
@@ -172,16 +188,29 @@ def run_full_pi5_benchmark(
         autoencoder_onnx, dummy_ae_in, input_name="input_features_48d", n_iterations=100
     )
 
-    pi5_engine_bench = run_pi5_benchmark(iterations=10)
+    pi5_engine_bench = run_pi5_benchmark(iterations=20, warmup=5)
 
     combined_latency_mean = forecaster_stats["mean_ms"] + autoencoder_stats["mean_ms"]
     combined_latency_p95 = forecaster_stats["p95_ms"] + autoencoder_stats["p95_ms"]
     max_rss = max(forecaster_stats["rss_mb"], autoencoder_stats["rss_mb"])
     peak_ram_mb = pi5_engine_bench["peak_ram_mb"]
 
+    forecaster_pass = bool(forecaster_stats["p95_ms"] < 5.0)
+    autoencoder_pass = bool(autoencoder_stats["p95_ms"] < 2.0)
+    engine_cycle_pass = bool(pi5_engine_bench["p95_ms"] < 15.0)
     pass_latency = bool(combined_latency_p95 < 50.0)
     pass_memory = bool(peak_ram_mb < 100.0)
-    all_passed = bool(pass_latency and pass_memory)
+    verdict = (
+        "ACCEPT"
+        if (
+            forecaster_pass
+            and autoencoder_pass
+            and engine_cycle_pass
+            and pass_latency
+            and pass_memory
+        )
+        else "REJECT"
+    )
 
     results = {
         "hardware_target": "Raspberry Pi 5 (Quad-core ARM Cortex-A76 @ 2.4 GHz, 8GB LPDDR4X)",
@@ -201,6 +230,16 @@ def run_full_pi5_benchmark(
             "peak_ram_mb": peak_ram_mb,
         },
         "acceptance_criteria": {
+            "forecaster_p95_ms": forecaster_stats["p95_ms"],
+            "forecaster_target_ms": 5.0,
+            "forecaster_pass": forecaster_pass,
+            "autoencoder_p95_ms": autoencoder_stats["p95_ms"],
+            "autoencoder_target_ms": 2.0,
+            "autoencoder_pass": autoencoder_pass,
+            "engine_cycle_mean_ms": pi5_engine_bench["mean_ms"],
+            "engine_cycle_p95_ms": pi5_engine_bench["p95_ms"],
+            "engine_cycle_target_ms": 15.0,
+            "engine_cycle_pass": engine_cycle_pass,
             "latency_target_ms": 50.0,
             "latency_actual_p95_ms": combined_latency_p95,
             "latency_pass": pass_latency,
@@ -208,7 +247,7 @@ def run_full_pi5_benchmark(
             "memory_actual_mb": peak_ram_mb,
             "process_rss_mb": pi5_engine_bench["process_rss_mb"],
             "memory_pass": pass_memory,
-            "verdict": "ACCEPT" if all_passed else "REJECT",
+            "verdict": verdict,
         },
     }
 
@@ -219,8 +258,8 @@ def run_full_pi5_benchmark(
     return results
 
 if __name__ == "__main__":
-    import sys
-    sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     from pi.central_engine import CentralAIEngine
 
     print("=== Khoi tao & Xuat mo hinh ONNX cho Raspberry Pi 5 ===")

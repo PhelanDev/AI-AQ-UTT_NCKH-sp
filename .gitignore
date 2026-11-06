@@ -26,6 +26,7 @@ plans/
 *.so
 *.dll
 *.dylib
+*.su
 
 # Environment & Secrets
 .env
@@ -54,3 +55,6 @@ docs/figures/test_*.png
 
 # External cloned reference repos
 external_refs/
+
+.superpowers/
+plans/

@@ -1,0 +1,17 @@
+{
+  "verdict": "APPROVE",
+  "forecaster_onnx_p95_ms": 0.5506250017788261,
+  "autoencoder_onnx_p95_ms": 0.0661600068269763,
+  "full_frame_p95_ms": 7.190504988830071,
+  "full_frame_mean_ms": 5.516735999262892,
+  "latency_drift_pct": 0.9333223826269461,
+  "memory_rss_delta_mb": 0.015625,
+  "model_tensor_footprint_mb": 0.412841796875,
+  "checkpoint_rss_mb": {
+    "25": 241.90625,
+    "50": 241.91015625,
+    "75": 241.91015625,
+    "100": 241.9140625
+  },
+  "failures": []
+}

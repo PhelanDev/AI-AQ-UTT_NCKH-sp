@@ -90,7 +90,7 @@ float tinyml_infer_c_factor_multisensor(float pm_avg, float diff_pm, float r_pm,
         for (int j = 0; j < TINYML_HIDDEN_DIM; j++) {
             sum += h0[j] * ((float)FC_BLOCK1_WEIGHT[i][j]);
         }
-        h1[i] = relu(sum * FC_BLOCK1_SCALE + FC_BLOCK1_BIAS[i] + h0[i]);
+        h1[i] = relu(sum * FC_BLOCK1_SCALE + FC_BLOCK1_BIAS[i]) + h0[i];
     }
 
     // Residual Block 2: block2 (96 -> 96) + Skip Connection h1 (tai su dung mang h0 lam bo dem Stack)
@@ -100,7 +100,7 @@ float tinyml_infer_c_factor_multisensor(float pm_avg, float diff_pm, float r_pm,
         for (int j = 0; j < TINYML_HIDDEN_DIM; j++) {
             sum += h1[j] * ((float)FC_BLOCK2_WEIGHT[i][j]);
         }
-        h2[i] = relu(sum * FC_BLOCK2_SCALE + FC_BLOCK2_BIAS[i] + h1[i]);
+        h2[i] = relu(sum * FC_BLOCK2_SCALE + FC_BLOCK2_BIAS[i]) + h1[i];
     }
 
     // Tang Output: fc_out (96 -> 1)
@@ -138,12 +138,20 @@ float tinyml_predict_pm25_multisensor(float pm1_raw, float pm2_raw, float pm10_r
         pm_avg, diff_pm, r_pm, temp_c, rh_percent, dew_point, co2_ppm, gas_proxy
     );
 
-    // Neu RH < 60% khong co phong am thi tra ve so do goc
-    if (rh_percent < 60.0f && co2_ppm < 800.0f) {
-        return pm_avg;
-    }
+    // CỔNG CHUYỂN PHA DELIQUESCENCE KHẢ VI 2 CHIỀU (SMOOTH 2D SIGMOID GATE)
+    float rh_safe = rh_percent;
+    if (rh_safe < 0.0f) rh_safe = 0.0f;
+    if (rh_safe > 100.0f) rh_safe = 100.0f;
+    float sig_rh = sigmoid((rh_safe - 68.0f) / 7.0f);
 
-    return pm_avg * c_factor;
+    float co2_safe = co2_ppm;
+    if (co2_safe < 0.0f) co2_safe = 0.0f;
+    float sig_co2 = sigmoid((co2_safe - 800.0f) / 240.0f);
+
+    float w_del = sig_rh * (1.0f - sig_co2);
+    float c_eff = (1.0f - w_del) * 1.0f + w_del * c_factor;
+
+    return pm_avg * c_eff;
 }
 
 float tinyml_predict_pm25(float pm1_raw, float pm2_raw,

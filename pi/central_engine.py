@@ -8,6 +8,7 @@ import json
 import math
 import os
 import time
+from collections import deque
 from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 import torch
@@ -90,6 +91,11 @@ class CentralAIEngine:
 
         self.onnx_forecaster_session = None
         self.onnx_autoencoder_session = None
+        self._env_ring_buffer: deque = deque(maxlen=24)
+
+    def reset_history_buffer(self) -> None:
+        """Đặt lại bộ đệm vòng lịch sử đa kênh."""
+        self._env_ring_buffer.clear()
 
     def _load_scaler_params(self) -> None:
         """Nạp tham số chuẩn hóa Min-Max và phân phối sai số nền từ JSON."""
@@ -108,8 +114,11 @@ class CentralAIEngine:
             dtype=np.float32,
         )
         self.feat_max = np.array(
-            [446.0, 604.0, 40.0, 100.0, 29.6, 24344.3, 1413.0, 4.2, 4.6, 1.0, 1.0, 1033.0, 496.0, 1.0],
+            [446.0, 604.0, 40.0, 100.0, 29.6, 1514.2, 1413.0, 4.2, 4.6, 1.0, 1.0, 1033.0, 496.0, 1.0],
             dtype=np.float32,
+        )
+        self.horizon_std_pm25 = np.array(
+            [4.0 + 0.5 * h for h in range(24)], dtype=np.float32
         )
         if os.path.exists(fc_params_path):
             with open(fc_params_path, "r", encoding="utf-8") as f:
@@ -117,6 +126,8 @@ class CentralAIEngine:
             if "feat_min" in fc_meta and "feat_max" in fc_meta:
                 self.feat_min = np.array(fc_meta["feat_min"], dtype=np.float32)
                 self.feat_max = np.array(fc_meta["feat_max"], dtype=np.float32)
+            if "horizon_std_pm25" in fc_meta:
+                self.horizon_std_pm25 = np.array(fc_meta["horizon_std_pm25"], dtype=np.float32)
 
         ae_params_path = "mlops/models/central_autoencoder_params.json"
         if self.autoencoder_weights and self.autoencoder_weights.endswith(".pt"):
@@ -140,10 +151,14 @@ class CentralAIEngine:
             if "min_48" in ae_meta and "max_48" in ae_meta:
                 self.ae_min_48 = np.array(ae_meta["min_48"], dtype=np.float32)
                 self.ae_max_48 = np.array(ae_meta["max_48"], dtype=np.float32)
-            mean_err = ae_meta.get("mean_error", 0.005)
-            std_err = ae_meta.get("std_error", 0.006)
-            baseline_mean = float(np.mean(mean_err))
-            baseline_std = max(float(np.mean(std_err)), 0.015)
+            if "baseline_mse_mean" in ae_meta and "baseline_mse_std" in ae_meta:
+                baseline_mean = float(ae_meta["baseline_mse_mean"])
+                baseline_std = max(float(ae_meta["baseline_mse_std"]), 0.001)
+            else:
+                mean_err = ae_meta.get("mean_error", 0.005)
+                std_err = ae_meta.get("std_error", 0.006)
+                baseline_mean = float(np.mean(mean_err))
+                baseline_std = max(float(np.mean(std_err)), 0.015)
 
         self.anomaly_detector.mu_ema = baseline_mean
         self.anomaly_detector.var_ema = baseline_std ** 2
@@ -242,17 +257,42 @@ class CentralAIEngine:
         arr_b = np.asarray(current_features_48d, dtype=np.float32)
 
         # Hỗ trợ tự động nhận diện thứ tự tham số nếu caller truyền (current_48d, history_8x24)
-        if arr_a.size == 48 and (arr_a.ndim == 1 or 1 in arr_a.shape) and arr_b.ndim == 2 and arr_b.size != 48:
+        if arr_a.size == 48 and (arr_a.ndim == 1 or 1 in arr_a.shape) and arr_b.ndim >= 2 and arr_b.size != 48:
             arr_a, arr_b = arr_b, arr_a
 
-        hist_arr = np.nan_to_num(arr_a, nan=0.0, posinf=500.0, neginf=0.0)
         curr_48d = np.nan_to_num(arr_b, nan=0.0, posinf=500.0, neginf=0.0).reshape(48)
+        self._env_ring_buffer.append(curr_48d.copy())
 
-        if hist_arr.ndim == 2 and hist_arr.shape[0] == self.n_stations and hist_arr.shape[1] != self.n_stations:
-            hist_arr = hist_arr.T
+        is_3d = False
+        is_2d_14ch = False
+        if arr_a.ndim == 3:
+            is_3d = True
+            if arr_a.shape[0] == self.n_stations and arr_a.shape[1] != self.n_stations:
+                arr_a = np.transpose(arr_a, (1, 0, 2))
+            hist_spatial = np.nan_to_num(arr_a[:, :, 0], nan=0.0, posinf=500.0, neginf=0.0)
+            hist_arr = hist_spatial
+        elif arr_a.ndim == 2 and arr_a.shape[1] == 14 and arr_a.shape[0] != self.n_stations:
+            is_2d_14ch = True
+            hist_spatial = np.tile(np.nan_to_num(arr_a[:, 0:1], nan=0.0, posinf=500.0, neginf=0.0), (1, self.n_stations))
+            hist_arr = hist_spatial
+        else:
+            hist_arr = np.nan_to_num(arr_a, nan=0.0, posinf=500.0, neginf=0.0)
+            if hist_arr.ndim == 2 and hist_arr.shape[0] == self.n_stations and hist_arr.shape[1] != self.n_stations:
+                hist_arr = hist_arr.T
+            hist_spatial = hist_arr
+
+        # Xử lý Cold-Start (T < 8 bước thời gian): đệm lặp hàng đầu tiên đảm bảo phân tích không gian ổn định
+        if hist_spatial.shape[0] < 8:
+            pad_needed = 8 - hist_spatial.shape[0]
+            if hist_spatial.shape[0] > 0:
+                first_row = hist_spatial[0:1, :]
+                hist_spatial = np.vstack([np.repeat(first_row, pad_needed, axis=0), hist_spatial])
+            else:
+                pm_default = curr_48d.reshape(self.n_stations, 6)[:, 0:1].T
+                hist_spatial = np.repeat(pm_default, 8, axis=0)
 
         spatial_results = self.spatial_engine.analyze(
-            hist_arr, dt_s=dt_s, max_lag=min(40, max(1, hist_arr.shape[0] // 2))
+            hist_spatial, dt_s=dt_s, max_lag=min(40, max(1, hist_spatial.shape[0] // 2))
         )
 
         st_mat = curr_48d.reshape(self.n_stations, 6)
@@ -283,34 +323,70 @@ class CentralAIEngine:
             wind_u = float(spatial_results["wind_vector"][0])
             wind_v = float(spatial_results["wind_vector"][1])
 
-        t_steps = min(24, hist_arr.shape[0])
-        recent_pm = hist_arr[-t_steps:]
+        t_steps = min(24, arr_a.shape[0] if (is_3d or is_2d_14ch) else hist_arr.shape[0])
+        recent_pm = hist_spatial[-t_steps:]
         mean_pm = np.mean(recent_pm, axis=1)
 
         feat_in = np.zeros((1, 24, 14), dtype=np.float32)
         base_hour = time.localtime().tm_hour
         for t in range(t_steps):
             idx = 24 - t_steps + t
-            pm_t = max(0.0, float(mean_pm[t]))
             hour = (base_hour + t) % 24
-            co2_t = col4_mean if col4_mean >= 150.0 else (pm_t * 18.0 + 410.0)
-            voc_t = col5_mean if col4_mean >= 150.0 else (pm_t * 2.1 + 90.0)
-            aqi_t = float(calc_vn_aqi_pm25(pm_t))
+            if is_3d:
+                step_3d = arr_a[-t_steps + t, :, :]
+                pm_t = max(0.0, float(np.mean(step_3d[:, 0])))
+                pm10_t = max(0.0, float(np.mean(step_3d[:, 1])))
+                temp_t = float(np.mean(step_3d[:, 2]))
+                rh_t = float(np.clip(np.mean(step_3d[:, 3]), 5.0, 100.0))
+                alpha_t = ((a_mt * temp_t) / (b_mt + temp_t)) + math.log(max(1.0, min(100.0, rh_t)) / 100.0)
+                dp_t = (b_mt * alpha_t) / (a_mt - alpha_t)
+                c4_t = float(np.mean(step_3d[:, 4]))
+                c5_t = float(np.mean(step_3d[:, 5]))
+                if 0.0 < c4_t < 100.0:
+                    wu_t = c4_t * math.cos(math.radians(c5_t))
+                    wv_t = c4_t * math.sin(math.radians(c5_t))
+                else:
+                    wu_t, wv_t = wind_u, wind_v
+                co2_t = c4_t if c4_t >= 150.0 else (pm_t * 18.0 + 410.0)
+                voc_t = c5_t if c4_t >= 150.0 else (pm_t * 2.1 + 90.0)
+                aqi_t = float(calc_vn_aqi_pm25(pm_t))
 
-            feat_in[0, idx, 0] = pm_t
-            feat_in[0, idx, 1] = pm_t * pm10_ratio
-            feat_in[0, idx, 2] = temp_c
-            feat_in[0, idx, 3] = rh_pct
-            feat_in[0, idx, 4] = dp_c
-            feat_in[0, idx, 5] = co2_t
-            feat_in[0, idx, 6] = voc_t
-            feat_in[0, idx, 7] = wind_u
-            feat_in[0, idx, 8] = wind_v
-            feat_in[0, idx, 9] = math.sin(2.0 * math.pi * hour / 24.0)
-            feat_in[0, idx, 10] = math.cos(2.0 * math.pi * hour / 24.0)
-            feat_in[0, idx, 11] = 1013.2
-            feat_in[0, idx, 12] = aqi_t
-            feat_in[0, idx, 13] = 1.0
+                feat_in[0, idx, 0] = pm_t
+                feat_in[0, idx, 1] = pm10_t
+                feat_in[0, idx, 2] = temp_t
+                feat_in[0, idx, 3] = rh_t
+                feat_in[0, idx, 4] = dp_t
+                feat_in[0, idx, 5] = co2_t
+                feat_in[0, idx, 6] = voc_t
+                feat_in[0, idx, 7] = wu_t
+                feat_in[0, idx, 8] = wv_t
+                feat_in[0, idx, 9] = math.sin(2.0 * math.pi * hour / 24.0)
+                feat_in[0, idx, 10] = math.cos(2.0 * math.pi * hour / 24.0)
+                feat_in[0, idx, 11] = 1013.2
+                feat_in[0, idx, 12] = aqi_t
+                feat_in[0, idx, 13] = 1.0
+            elif is_2d_14ch:
+                feat_in[0, idx, :] = arr_a[-t_steps + t, :]
+            else:
+                pm_t = max(0.0, float(mean_pm[t]))
+                co2_t = col4_mean if col4_mean >= 150.0 else (pm_t * 18.0 + 410.0)
+                voc_t = col5_mean if col4_mean >= 150.0 else (pm_t * 2.1 + 90.0)
+                aqi_t = float(calc_vn_aqi_pm25(pm_t))
+
+                feat_in[0, idx, 0] = pm_t
+                feat_in[0, idx, 1] = pm_t * pm10_ratio
+                feat_in[0, idx, 2] = temp_c
+                feat_in[0, idx, 3] = rh_pct
+                feat_in[0, idx, 4] = dp_c
+                feat_in[0, idx, 5] = co2_t
+                feat_in[0, idx, 6] = voc_t
+                feat_in[0, idx, 7] = wind_u
+                feat_in[0, idx, 8] = wind_v
+                feat_in[0, idx, 9] = math.sin(2.0 * math.pi * hour / 24.0)
+                feat_in[0, idx, 10] = math.cos(2.0 * math.pi * hour / 24.0)
+                feat_in[0, idx, 11] = 1013.2
+                feat_in[0, idx, 12] = aqi_t
+                feat_in[0, idx, 13] = 1.0
 
         if t_steps < 24 and t_steps > 0:
             feat_in[0, : 24 - t_steps, :] = feat_in[0, 24 - t_steps, :]
@@ -377,6 +453,22 @@ class CentralAIEngine:
             is_anomaly=is_anom,
         )
 
+        # Co giãn khoảng tin cậy phân vị thích ứng động (Heteroscedastic Conformal Quantiles)
+        sigma_window = float(np.std(mean_pm)) if len(mean_pm) > 1 else 0.0
+        sigma_spatial = float(np.std(st_mat[:, 0])) if st_mat.shape[0] > 1 else 0.0
+        scale_dynamic = float(np.clip(
+            0.75 + 0.25 * (sigma_window + 0.5 * sigma_spatial) / 15.0,
+            0.65, 2.5
+        ))
+
+        base_std = getattr(self, "horizon_std_pm25", np.array([4.0 + 0.5 * h for h in range(24)], dtype=np.float32))
+        h_std = base_std * scale_dynamic
+        pm25_p10 = [max(0.0, float(p - 1.2816 * std_h)) for p, std_h in zip(pm25_phys, h_std)]
+        pm25_p90 = [float(p + 1.2816 * std_h) for p, std_h in zip(pm25_phys, h_std)]
+        # Enforce strict monotonicity invariants: 0 <= P10 <= P50 <= P90
+        pm25_p10 = [min(p10, float(p)) for p10, p in zip(pm25_p10, pm25_phys)]
+        pm25_p90 = [max(p90, float(p)) for p90, p in zip(pm25_p90, pm25_phys)]
+
         pm25_list = [float(p) for p in pm25_phys]
         aqi_list = [float(a) for a in aqi_phys]
         pm25_6_12_24 = [pm25_list[5], pm25_list[11], pm25_list[23]]
@@ -390,9 +482,14 @@ class CentralAIEngine:
                 "source_location_utm": spatial_results["source_location_utm"],
                 "emission_rate_gps": spatial_results["estimated_emission_rate_gps"],
                 "confidence": spatial_results["localization_confidence"],
+                "r_matrix": spatial_results["r_matrix"],
+                "tau_star_matrix": spatial_results["tau_star_matrix"],
             },
             "forecast_24h": {
                 "pm25_pred": pm25_list,
+                "pm25_p50": pm25_list,
+                "pm25_p10": pm25_p10,
+                "pm25_p90": pm25_p90,
                 "aqi_pred": aqi_list,
                 "pm25_6h_12h_24h": pm25_6_12_24,
                 "aqi_6h_12h_24h": aqi_6_12_24,
@@ -403,6 +500,9 @@ class CentralAIEngine:
                 "pm25_6h_12h_24h": pm25_6_12_24,
                 "aqi_6h_12h_24h": aqi_6_12_24,
                 "pm25_pred": pm25_list,
+                "pm25_p50": pm25_list,
+                "pm25_p10": pm25_p10,
+                "pm25_p90": pm25_p90,
                 "aqi_pred": aqi_list,
             },
             "anomaly_diagnostics": {

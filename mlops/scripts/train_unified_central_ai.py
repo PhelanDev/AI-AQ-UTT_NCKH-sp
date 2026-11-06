@@ -34,7 +34,7 @@ torch.manual_seed(42)
 np.random.seed(42)
 
 def parse_dt(dt_str: str) -> datetime:
-    for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"]:
+    for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M"]:
         try:
             return datetime.strptime(dt_str.strip(), fmt)
         except ValueError:
@@ -82,7 +82,7 @@ def load_all_stations_chronological(
                 pm10 = float(r["pm10"]) if is_valid_num(r.get("pm10")) else pm25 * 1.3
                 t = float(r["temperature"])
                 rh = float(r["relative_humidity"])
-                co2 = float(r["co"]) * 0.5 + 410.0 if is_valid_num(r.get("co")) else 420.0
+                co2 = min(2500.0, 415.0 + float(r["co"]) * 0.12) if is_valid_num(r.get("co")) else 420.0
                 voc = float(r["no2"]) * 2.0 + 80.0 if is_valid_num(r.get("no2")) else 100.0
                 ws = float(r["wind_speed"]) / 3.6 if is_valid_num(r.get("wind_speed")) else 2.0
                 wd = float(r["wind_dir"]) if is_valid_num(r.get("wind_dir")) else 0.0
@@ -113,7 +113,7 @@ def load_all_stations_chronological(
                 pm10 = float(r["PM10"]) if is_valid_num(r.get("PM10")) else pm25 * 1.3
                 t = float(r["Temperature"])
                 rh = float(r["Relative Humidity"])
-                co2 = float(r["CO"]) * 1.5 + 410.0 if is_valid_num(r.get("CO")) else 420.0
+                co2 = min(2500.0, 415.0 + float(r["CO"]) * 0.12) if is_valid_num(r.get("CO")) else 420.0
                 voc = float(r["NO2"]) * 3.5 + 90.0 if is_valid_num(r.get("NO2")) else 100.0
                 ws = float(r["Wind Speed"]) if is_valid_num(r.get("Wind Speed")) else 2.0
                 press = float(r["Pressure"]) if is_valid_num(r.get("Pressure")) else 1013.2
@@ -130,6 +130,40 @@ def load_all_stations_chronological(
                 aqi = calc_vn_aqi_pm25(pm25)
 
                 raw_stations[hanoi_key].append((dt, pm25, pm10, t, rh, co2, voc, wind_u, wind_v, press, h_sin, h_cos, m_sin, m_cos, lat, aqi))
+
+    regional_hanoi_path = "mlops/data/hanoi_regional_5yr_continuous.csv"
+    if os.path.exists(regional_hanoi_path):
+        with open(regional_hanoi_path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for r in reader:
+                if not is_valid_num(r.get("pm25")): continue
+                dt = parse_dt(r.get("timestamp", ""))
+                if not dt: continue
+
+                st_key = "VN_" + (r.get("station_name") or r.get("station_id", "HN_Station"))
+                if st_key not in raw_stations:
+                    raw_stations[st_key] = []
+
+                pm25 = float(r["pm25"])
+                pm10 = float(r["pm10"]) if is_valid_num(r.get("pm10")) else pm25 * 1.3
+                t = float(r["temperature_c"]) if is_valid_num(r.get("temperature_c")) else 25.0
+                rh = float(r["relative_humidity"]) if is_valid_num(r.get("relative_humidity")) else 70.0
+                co2 = min(2500.0, 415.0 + float(r["co"]) * 0.12) if is_valid_num(r.get("co")) else 420.0
+                voc = float(r["no2"]) * 3.5 + 90.0 if is_valid_num(r.get("no2")) else 100.0
+                ws = float(r["wind_speed_10m"]) if is_valid_num(r.get("wind_speed_10m")) else 2.0
+                wd = float(r["wind_direction_10m"]) if is_valid_num(r.get("wind_direction_10m")) else 90.0
+                wind_u = ws * math.cos(math.radians(wd))
+                wind_v = ws * math.sin(math.radians(wd))
+                press = float(r["surface_pressure"]) if is_valid_num(r.get("surface_pressure")) else 1013.2
+
+                h_sin = math.sin(2 * math.pi * dt.hour / 24.0)
+                h_cos = math.cos(2 * math.pi * dt.hour / 24.0)
+                m_sin = math.sin(2 * math.pi * (dt.month - 1) / 12.0)
+                m_cos = math.cos(2 * math.pi * (dt.month - 1) / 12.0)
+                lat = float(r.get("lat", 21.0)) / 90.0
+                aqi = calc_vn_aqi_pm25(pm25)
+
+                raw_stations[st_key].append((dt, pm25, pm10, t, rh, co2, voc, wind_u, wind_v, press, h_sin, h_cos, m_sin, m_cos, lat, aqi))
 
     # Tính toán vi phân bậc 1 pm25_diff (tốc độ gia tốc tích tụ/khuếch tán ô nhiễm)
     stations = {}
@@ -267,10 +301,10 @@ def plot_training_report(log_history, save_png_path="docs/figures/fig_central_ai
     print(f" -> Đã xuất biểu đồ chuẩn kinh điển (Image 1): {save_png_path}")
 
 def train_unified_ai(
-    epochs: int = 100,
+    epochs: int = 35,
     batch_size: int = 512,
-    lr: float = 7e-4,
-    patience: int = 15,
+    lr: float = 1e-3,
+    patience: int = 10,
     save_pt: str = "mlops/models/central_unified_ai.pt",
     save_onnx: str = "mlops/models/central_unified_ai.onnx",
     save_params: str = "mlops/models/central_unified_ai_params.json",
@@ -562,6 +596,20 @@ def train_unified_ai(
     with open(save_params, "w", encoding="utf-8") as f:
         json.dump(params, f, indent=2)
     print(f"Đã lưu siêu tham số vào: {save_params}")
+
+    metrics_summary = {
+        "val_r2": best_metrics.get("val_r2", 0.0),
+        "val_mae_ug": best_metrics.get("mae_pm_overall", 0.0),
+        "horizon_r2": best_metrics.get("r2_horizons", {}),
+        "horizon_mae": best_metrics.get("mae_horizons", {}),
+        "train_r2": best_metrics.get("train_r2", 0.0),
+        "best_epoch": best_metrics.get("epoch", 0),
+        "recon_err": best_metrics.get("recon_err", 0.0),
+    }
+    metrics_save_path = "mlops/models/central_unified_ai_metrics.json"
+    with open(metrics_save_path, "w", encoding="utf-8") as f:
+        json.dump(metrics_summary, f, indent=2)
+    print(f"Đã lưu chỉ số kiểm định vào: {metrics_save_path}")
 
 if __name__ == "__main__":
     train_unified_ai()

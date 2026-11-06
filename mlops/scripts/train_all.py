@@ -45,14 +45,28 @@ def main():
     # Bước 3: Quantize & Export C++
     run_step(3, "Lượng tử hóa INT8 & Xuất tệp nhúng Flash C++ (esp/include/model_data.h)",
              [sys.executable, "mlops/scripts/quantize_multisensor_int8.py"])
+    subprocess.run("g++ -shared -fPIC -O3 -I esp/include esp/src/tinyml_edge_engine.cpp -o esp/tests/tinyml_edge.dll", shell=True)
+    subprocess.run("g++ -O3 -I esp/include esp/src/tinyml_edge_engine.cpp esp/tests/test_main.cpp -o esp/tests/test_main.exe", shell=True)
+    subprocess.run("g++ -O3 -I esp/include esp/src/tinyml_edge_engine.cpp esp/tests/test_adversarial_firmware.cpp -o esp/tests/test_adversarial_firmware.exe", shell=True)
 
-    # Bước 4: Train Unified Central Model
-    run_step(4, "Huấn luyện Mô hình Trung tâm Phân tầng 104k (Raspberry Pi 5) & Xuất ONNX",
+    # Bước 4: Train Central Models (Forecaster, Autoencoder, Unified AI)
+    run_step(4, "Huấn luyện Mô hình Trung tâm (Raspberry Pi 5: Forecaster, Autoencoder & Unified AI) & Xuất ONNX",
+             [sys.executable, "mlops/scripts/train_central_forecaster.py"])
+    run_step(4, "Huấn luyện Mô hình Trung tâm - Deep Autoencoder Phát hiện Dị thường (Raspberry Pi 5) & Xuất ONNX",
+             [sys.executable, "mlops/scripts/train_central_autoencoder.py"])
+    run_step(4, "Huấn luyện Mô hình Trung tâm Phân tầng Thống nhất (Hierarchical Central AI) & Xuất ONNX",
              [sys.executable, "mlops/scripts/train_unified_central_ai.py"])
 
     # Bước 5: Verify Suite
     run_step(5, "Kiểm thử tự động toàn diện (PyTest)",
-             [sys.executable, "-m", "pytest", "tests/test_multisensor_training.py", "tests/test_unified_central_ai.py", "-v"])
+             [sys.executable, "-m", "pytest",
+              "tests/test_multisensor_training.py",
+              "tests/test_unified_central_ai.py",
+              "tests/test_regression_locks.py",
+              "tests/test_deep_learning_upgrade_4phases.py",
+              "tests/test_challenger_m1_deeplearning.py",
+              "tests/test_challenger_m1_r2_adversarial.py",
+              "-v"])
 
     print("\n" + "=" * 80)
     print("  TOÀN BỘ QUÁ TRÌNH HUẤN LUYỆN & XUẤT MÔ HÌNH THÀNH CÔNG RỰC RỠ 100%!")
