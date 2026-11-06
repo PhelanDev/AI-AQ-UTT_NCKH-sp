@@ -8,6 +8,7 @@ __pycache__/
 # Testing & Coverage
 tests/
 esp/tests/
+pi/test_*.py
 .pytest_cache/
 .coverage
 .coverage.*
