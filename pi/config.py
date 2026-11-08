@@ -82,10 +82,10 @@ IS_PROTOTYPE_DEMO: bool = True
 _RAW_STATIONS_DATA = [
     (
         "STATION_01",
-        "HUS_NguyenTrai",
-        "Trạm Cảm Biến Prototype (334 Nguyễn Trãi - ĐH KHTN)",
-        20.9982,
-        105.8065,
+        "UTT_TrieuKhuc",
+        "Trạm Cảm Biến Prototype (54 Triều Khúc - ĐH Công Nghệ GTVT)",
+        20.9852,
+        105.7972,
         18.0,
         "traffic_corridor",
     ),
@@ -249,3 +249,16 @@ FEATURE_NAMES: List[str] = [
 
 NUM_STATIONS: int = len(STATIONS)
 NUM_FEATURES: int = len(FEATURE_NAMES)
+
+# ==============================================================================
+# DUTY CYCLE & TEMPORAL RESOLUTION CONSTANTS (15-MINUTE CYCLE)
+# Chu kỳ quan trắc tối ưu năng lượng 15 phút đồng bộ ESP32-S3 và Raspberry Pi 5
+# ==============================================================================
+TELEMETRY_INTERVAL_S: float = 900.0      # 15 phút (900.0 giây)
+ESP_WARMUP_SECONDS: float = 30.0         # 30 giây làm ấm quạt/laser PMS7003
+ESP_ACTIVE_PROCESS_SECONDS: float = 2.0  # 2 giây đọc & xử lý cảm biến
+ESP_DEEP_SLEEP_SECONDS: float = 868.0    # 14.47 phút ngủ sâu (868.0 giây)
+STEPS_PER_HOUR: int = 4                  # 4 bước / giờ
+SUBHOURLY_RING_BUFFER_LEN: int = 96      # 96 bước 15 phút = 24 giờ
+WLS_MAX_LAG_STEPS: int = 12              # Tương quan trễ tối đa 12 bước (3 giờ)
+

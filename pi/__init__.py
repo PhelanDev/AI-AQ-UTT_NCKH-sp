@@ -18,6 +18,13 @@ from pi.config import (
     compute_distance_matrix,
     compute_spatial_adjacency_matrix,
     wgs84_to_utm48n,
+    TELEMETRY_INTERVAL_S,
+    ESP_WARMUP_SECONDS,
+    ESP_ACTIVE_PROCESS_SECONDS,
+    ESP_DEEP_SLEEP_SECONDS,
+    STEPS_PER_HOUR,
+    SUBHOURLY_RING_BUFFER_LEN,
+    WLS_MAX_LAG_STEPS,
 )
 from pi.simulator import (
     AtmosphericSimulator,
@@ -43,6 +50,7 @@ from pi.spatial_temporal_engine import (
     compute_cross_correlation_matrix,
     estimate_wind_and_dispersion,
     localize_emission_source,
+    generate_pollution_heatmap,
 )
 from pi.forecasting_engine import (
     DilatedTCNBiGRUForecaster,
@@ -79,6 +87,13 @@ __all__ = [
     "compute_distance_matrix",
     "compute_spatial_adjacency_matrix",
     "wgs84_to_utm48n",
+    "TELEMETRY_INTERVAL_S",
+    "ESP_WARMUP_SECONDS",
+    "ESP_ACTIVE_PROCESS_SECONDS",
+    "ESP_DEEP_SLEEP_SECONDS",
+    "STEPS_PER_HOUR",
+    "SUBHOURLY_RING_BUFFER_LEN",
+    "WLS_MAX_LAG_STEPS",
 
     "AtmosphericSimulator",
     "WindFieldOU",
@@ -101,6 +116,7 @@ __all__ = [
     "compute_cross_correlation_matrix",
     "estimate_wind_and_dispersion",
     "localize_emission_source",
+    "generate_pollution_heatmap",
 
     "DilatedTCNBiGRUForecaster",
     "AsymmetricHuberLoss",
