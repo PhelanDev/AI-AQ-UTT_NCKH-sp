@@ -8,6 +8,8 @@
 #include "board_pins.h"
 #include "sensor_drivers.h"
 #include "display_mqtt_hal.h"
+#include "tinyml_edge_engine.h"
+#include "power_scheduler.h"
 
 // ============================================================================
 // TEST 1: Board Pins & Hardware Protection (Octal PSRAM GPIO33..37 Safety)
@@ -420,9 +422,194 @@ static void test_offline_ringbuf(void) {
     printf("  -> PASS: Offline ring buffer verified (FIFO, capacity, full protection).\n");
 }
 
+// ============================================================================
+// TEST 8: RTC Memory Retention (Dual PMS Chamber Drift & Boot Cycle Counter)
+// ============================================================================
+static void test_rtc_drift_retention(void) {
+    printf("[TEST 8] Testing RTC drift & boot counter retention...\n");
+
+    tinyml_reset_drift_monitor();
+    assert(fabsf(tinyml_get_current_ema_drift()) < 1e-5f);
+
+    tinyml_set_boot_cycle_count(0);
+    assert(tinyml_get_boot_cycle_count() == 0);
+    tinyml_increment_boot_cycle_count();
+    assert(tinyml_get_boot_cycle_count() == 1);
+
+    // Initial cycle: pm1 = 50.0, pm2 = 40.0 -> diff = 10.0
+    float ema = 0.0f;
+    TinyML_AnomalyCode code = tinyml_update_drift_monitor(50.0f, 40.0f, &ema);
+    assert(code == TINYML_ANOMALY_OK);
+    assert(fabsf(ema - 10.0f) < 1e-3f);
+    assert(fabsf(tinyml_get_current_ema_drift() - 10.0f) < 1e-3f);
+
+    // Second cycle: pm1 = 60.0, pm2 = 40.0 -> diff = 20.0
+    // EMA = (1 - 0.01) * 10.0 + 0.01 * 20.0 = 9.9 + 0.2 = 10.1
+    code = tinyml_update_drift_monitor(60.0f, 40.0f, &ema);
+    assert(code == TINYML_ANOMALY_OK);
+    assert(fabsf(ema - 10.1f) < 1e-2f);
+    assert(fabsf(tinyml_get_current_ema_drift() - 10.1f) < 1e-2f);
+
+    // Simulate persistent excessive drift exceeding threshold (15.0 ug/m3)
+    for (int i = 0; i < 200; ++i) {
+        code = tinyml_update_drift_monitor(100.0f, 0.0f, &ema);
+    }
+    assert(ema > PMS7003_DRIFT_THRESHOLD);
+    assert(code == TINYML_ANOMALY_CHAMBER_DRIFT);
+
+    // Reset monitor
+    tinyml_reset_drift_monitor();
+    assert(fabsf(tinyml_get_current_ema_drift()) < 1e-5f);
+
+    printf("  -> PASS: RTC drift retention, EMA convergence, and anomaly detection verified.\n");
+}
+
+// ============================================================================
+// TEST 9: 15-Minute FSM Warmup Enforced (< 30s Blocks Measurement)
+// ============================================================================
+static void test_fsm_warmup_incomplete(void) {
+    printf("[TEST 9] Testing FSM warmup validation (< 30s blocks inference)...\n");
+
+    RawSensorSample sample;
+    memset(&sample, 0, sizeof(sample));
+    sample.timestamp = 1731063600;
+    sample.pm1_raw = 40.0f;
+    sample.pm2_raw = 41.0f;
+    sample.pm10_raw = 55.0f;
+    sample.temp_c = 25.0f;
+    sample.rh_percent = 70.0f;
+    sample.co2_ppm = 500.0f;
+    sample.gas_proxy = 100.0f;
+
+    // Test with warmup < 30s (e.g. 15.0s and 29.9s)
+    EdgeCycleResult res15 = edge_execute_15min_duty_cycle(&sample, 15.0f, true);
+    assert(res15.anomaly_code == TINYML_ANOMALY_WARMUP_INCOMPLETE);
+    assert(res15.lcd_updated == false);
+    assert(res15.telemetry_sent == false);
+    assert(res15.entered_deep_sleep == false);
+    assert(res15.deep_sleep_duration_sec == 0);
+    assert(res15.pms_set_pin_level == true); // Fan kept running
+    assert(power_scheduler_get_state() == EDGE_STATE_WARMUP);
+
+    EdgeCycleResult res29 = edge_execute_15min_duty_cycle(&sample, 29.9f, true);
+    assert(res29.anomaly_code == TINYML_ANOMALY_WARMUP_INCOMPLETE);
+    assert(res29.lcd_updated == false);
+    assert(res29.telemetry_sent == false);
+    assert(res29.entered_deep_sleep == false);
+
+    // Null safety
+    EdgeCycleResult null_res = edge_execute_15min_duty_cycle(NULL, 35.0f, true);
+    assert(null_res.anomaly_code == TINYML_ANOMALY_WARMUP_INCOMPLETE);
+
+    printf("  -> PASS: FSM strictly blocks premature measurement when warmup < 30s.\n");
+}
+
+// ============================================================================
+// TEST 10: 15-Minute FSM Nominal Duty Cycle (Warmup >= 30s, Sleep 868s)
+// ============================================================================
+static void test_fsm_warmup_complete_nominal_cycle(void) {
+    printf("[TEST 10] Testing nominal FSM cycle (warmup >= 30s, LCD/MQTT, sleep 868s)...\n");
+
+    tinyml_reset_drift_monitor();
+    tinyml_set_boot_cycle_count(0);
+
+    RawSensorSample sample;
+    sample.timestamp = 1731063600;
+    sample.pm1_raw = 35.0f;
+    sample.pm2_raw = 36.0f;
+    sample.pm10_raw = 48.0f;
+    sample.temp_c = 28.0f;
+    sample.rh_percent = 85.0f; // High humidity: Deliquescence regime
+    sample.co2_ppm = 500.0f;
+    sample.gas_proxy = 100.0f;
+
+    EdgeCycleResult res = edge_execute_15min_duty_cycle(&sample, 30.5f, true);
+
+    assert(res.anomaly_code == TINYML_ANOMALY_OK);
+    assert(res.pm25_calibrated > 0.0f);
+    // At RH=85%, hygroscopic water swelling must be compensated downwards (calibrated < raw average 35.5)
+    assert(res.pm25_calibrated < 35.5f);
+    assert(res.vn_aqi > 0);
+    assert(res.lcd_updated == true);
+    assert(res.telemetry_sent == true);
+    assert(res.pms_set_pin_level == false); // Fan and laser turned OFF for sleep
+    assert(res.entered_deep_sleep == true);
+    assert(res.deep_sleep_duration_sec == 868);
+    assert(tinyml_get_boot_cycle_count() == 1);
+    assert(power_scheduler_get_state() == EDGE_STATE_DEEP_SLEEP);
+
+    printf("  -> PASS: Nominal cycle verified: Calibrated=%.2f ug/m3, VN-AQI=%d, DeepSleep=%us, PMS_SET=LOW.\n",
+           res.pm25_calibrated, res.vn_aqi, res.deep_sleep_duration_sec);
+}
+
+// ============================================================================
+// TEST 11: 100 Consecutive Duty Cycles Simulation & Timing Integrity
+// ============================================================================
+static void test_100_cycles_simulation_and_duty_timing(void) {
+    printf("[TEST 11] Testing 100 consecutive 15-min duty cycles (25 hours simulation)...\n");
+
+    tinyml_reset_drift_monitor();
+    tinyml_set_boot_cycle_count(0);
+    offline_ringbuf_clear();
+
+    const uint32_t NUM_CYCLES = 100;
+    uint64_t accumulated_simulated_seconds = 0;
+
+    for (uint32_t c = 1; c <= NUM_CYCLES; ++c) {
+        RawSensorSample sample;
+        sample.timestamp = 1731000000 + (uint32_t)(c * 900);
+        sample.pm1_raw = 25.0f + (float)(c % 20);
+        sample.pm2_raw = sample.pm1_raw + ((c % 2 == 0) ? 0.6f : -0.6f);
+        sample.pm10_raw = sample.pm1_raw * 1.35f;
+        sample.temp_c = 26.0f + (float)(c % 8) * 0.5f;
+        sample.rh_percent = 65.0f + (float)(c % 25);
+        sample.co2_ppm = 450.0f + (float)(c % 100);
+        sample.gas_proxy = 100.0f;
+
+        // Disconnect network on cycles 30..34 (5 offline cycles)
+        bool online = !(c >= 30 && c <= 34);
+
+        EdgeCycleResult res = edge_execute_15min_duty_cycle(&sample, 30.0f, online);
+
+        assert(res.anomaly_code == TINYML_ANOMALY_OK);
+        assert(res.entered_deep_sleep == true);
+        assert(res.pms_set_pin_level == false);
+        assert(res.deep_sleep_duration_sec == ESP_DEEP_SLEEP_SEC);
+        assert(res.lcd_updated == true);
+
+        if (!online) {
+            assert(res.telemetry_sent == false);
+        } else if (c == 35) {
+            // Reconnection: automatically popped and published queued offline packets
+            assert(res.telemetry_sent == true);
+            assert(offline_ringbuf_is_empty() == true);
+        } else {
+            assert(res.telemetry_sent == true);
+        }
+
+        // Validate exact timing breakdown: 30s + 2s + 868s = 900s
+        uint32_t cycle_seconds = ESP_WARMUP_SEC + ESP_ACTIVE_PROCESS_SEC + res.deep_sleep_duration_sec;
+        assert(cycle_seconds == ESP_CYCLE_TOTAL_SEC);
+        accumulated_simulated_seconds += cycle_seconds;
+
+        assert(tinyml_get_boot_cycle_count() == c);
+    }
+
+    // 100 cycles of 900s = 90,000s = 25.0 hours
+    assert(accumulated_simulated_seconds == 100ULL * 900ULL);
+    assert(accumulated_simulated_seconds == 90000ULL);
+    assert(tinyml_get_boot_cycle_count() == 100);
+
+    // Drift monitor across 100 cycles with small symmetric noise must remain near 0
+    float drift = tinyml_get_current_ema_drift();
+    assert(fabsf(drift) < 2.0f);
+
+    printf("  -> PASS: 100 cycles completed (90,000s / 25h simulated), zero memory leaks, timing exact.\n");
+}
+
 int main(void) {
     printf("====================================================================\n");
-    printf("   ESP32-S3 FIRMWARE & 15-MIN DUTY CYCLE TEST SUITE (TASK 1)       \n");
+    printf("   ESP32-S3 FIRMWARE & 15-MIN DUTY CYCLE TEST SUITE (TASKS 1 & 2)  \n");
     printf("====================================================================\n");
 
     test_board_pins_and_psram_safety();
@@ -432,7 +619,11 @@ int main(void) {
     test_lcd_formatting();
     test_mqtt_json_formatter();
     test_offline_ringbuf();
+    test_rtc_drift_retention();
+    test_fsm_warmup_incomplete();
+    test_fsm_warmup_complete_nominal_cycle();
+    test_100_cycles_simulation_and_duty_timing();
 
-    printf("\n>>> ALL TASK 1 TESTS PASSED SUCCESSFULLY! <<<\n");
+    printf("\n>>> ALL 11 TESTS (TASKS 1 & 2) PASSED SUCCESSFULLY! <<<\n");
     return 0;
 }

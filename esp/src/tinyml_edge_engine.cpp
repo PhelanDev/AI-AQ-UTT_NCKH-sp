@@ -2,8 +2,9 @@
 #include "model_data.h"
 #include <math.h>
 
-static float s_ema_drift = 0.0f;
-static bool s_drift_initialized = false;
+TINYML_RTC_ATTR static float s_ema_drift = 0.0f;
+TINYML_RTC_ATTR static bool s_drift_initialized = false;
+TINYML_RTC_ATTR static uint32_t s_boot_cycle_count = 0;
 
 static inline float relu(float v) {
     return (v > 0.0f) ? v : 0.0f;
@@ -53,6 +54,27 @@ TinyML_AnomalyCode tinyml_update_drift_monitor(float pm1, float pm2, float *ema_
     }
 
     return TINYML_ANOMALY_OK;
+}
+
+void tinyml_reset_drift_monitor(void) {
+    s_ema_drift = 0.0f;
+    s_drift_initialized = false;
+}
+
+float tinyml_get_current_ema_drift(void) {
+    return s_ema_drift;
+}
+
+uint32_t tinyml_get_boot_cycle_count(void) {
+    return s_boot_cycle_count;
+}
+
+void tinyml_increment_boot_cycle_count(void) {
+    s_boot_cycle_count++;
+}
+
+void tinyml_set_boot_cycle_count(uint32_t count) {
+    s_boot_cycle_count = count;
 }
 
 float tinyml_infer_c_factor_multisensor(float pm_avg, float diff_pm, float r_pm,
