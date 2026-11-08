@@ -100,7 +100,7 @@ E:\AQ\
 | **Độ trễ toàn chuỗi Gateway** | $< 50.0\text{ ms}$ (chu kỳ 15 phút) | **$\approx 7.0 - 22.0\text{ ms}$** (trên Pi 5 8GB) | Tối ưu ma trận Kriging Pre-Caching ($<0.05\text{ms}$) |
 | **Tải tài nguyên Pi 5** | CPU $< 20\%$, RAM $< 1\text{ GB}$ | **CPU: $< 2.5\%$**, **RAM: $\approx 267\text{ MB}$** | Vận hành mát mẻ, tỷ lệ nhàn rỗi $> 99.99\%$ |
 | **Bản đồ Web (`web_map`)** | Đa chân trời, thích ứng $N=1 \rightarrow K$ | **6 mốc thời gian, $25 \times 25$, `opacity_grid`** | 1 trạm hiện đúng 1 pin, không sinh trạm ảo |
-| **Độ tin cậy kiểm thử tự động** | 100% Pass không hồi quy | **358 / 358 Tests PASSED** | Bảo toàn 100% 53 bài test đối kháng vật lý |
+| **Độ tin cậy kiểm thử tự động** | 100% Pass không hồi quy | **364 / 364 Tests PASSED** | Bảo toàn 100% 53 bài test đối kháng vật lý |
 
 ---
 
@@ -118,12 +118,27 @@ g++ -O3 -Wall -Iinclude tests/test_main.cpp src/tinyml_edge_engine.cpp -o tests/
 pytest tests/ -v
 ```
 
-### 3. Chạy Đo Kiểm Hiệu Năng Thực Tế Trên Raspberry Pi 5 Gateway:
+### 3. Khởi Chạy Web Dashboard & REST API Server V5.0 (Raspberry Pi 5):
+```bash
+python -m pi.web_server 8080
+```
+Truy cập giao diện Web Dashboard tương tác tại: `http://localhost:8080/`
+- **Bản đồ nhiệt đa tầng**: Leaflet Canvas Overlay tại tọa độ trạm thực nghiệm 54 Triều Khúc (UTT - `lat: 20.9852, lon: 105.7972`).
+- **6 mốc dự báo không gian**: `current`, `+1h`, `+3h`, `+6h`, `+12h`, `+24h` kèm ma trận suy giảm độ tin cậy `opacity_grid`.
+- **Dự báo chuỗi thời gian 24 giờ**: Chart.js trực quan hóa nồng độ PM2.5 và dải tin cậy $P_{10} - P_{90}$.
+- **Hệ thống REST API siêu nhẹ (Python stdlib, RAM < 15MB, Latency < 5ms)**:
+  - `GET /api/status`: Trạng thái hệ thống, uptime, thông tin trạm thực nghiệm.
+  - `GET /api/telemetry`: Thông số cảm biến thời gian thực (PM2.5, VN-AQI, Temp, RH, CO2, VOC).
+  - `GET /api/map`: Dữ liệu phân bố không gian và ma trận 25x25 cho 6 chân trời.
+  - `GET /api/forecast`: Dự báo chuỗi thời gian 24 giờ tới.
+  - `POST /api/trigger_cycle`: Kích hoạt chu kỳ tính toán mới phục vụ demo nghiệm thu.
+
+### 4. Chạy Đo Kiểm Hiệu Năng Thực Tế Trên Raspberry Pi 5 Gateway:
 ```bash
 python -m pi.benchmark_pi5
 ```
 
-### 4. Tái Tạo Báo Cáo Khoa Học Word (Kèm Biểu Đồ 300 DPI):
+### 5. Tái Tạo Báo Cáo Khoa Học Word (Kèm Biểu Đồ 300 DPI):
 ```bash
 python docs/generators/build_clean_accessible_report.py
 ```

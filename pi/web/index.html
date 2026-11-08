@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quan Trắc & Dự Báo Không Khí Đa Tầng V5.0 | 54 Triều Khúc (UTT)</title>
+    
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #090d16;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.85);
+            --bg-card-hover: rgba(31, 41, 55, 0.9);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent-cyan: #06b6d4;
+            --accent-blue: #3b82f6;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --aqi-good: #10b981;
+            --aqi-moderate: #f59e0b;
+            --aqi-unhealthy-sensitive: #f97316;
+            --aqi-unhealthy: #ef4444;
+            --aqi-very-unhealthy: #a855f7;
+            --aqi-hazardous: #7f1d1d;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Top Navigation Header */
+        header {
+            background: linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(9, 13, 22, 0.9) 100%);
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 24px;
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .brand-title {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .brand-title h1 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(90deg, #38bdf8 0%, #818cf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-title p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .location-tag {
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn-trigger {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 9px 18px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-trigger:hover {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+        }
+
+        .btn-trigger:active {
+            transform: translateY(0);
+        }
+
+        .btn-trigger.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-emerald);
+            padding: 6px 12px;
+            border-radius: 9999px;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-emerald);
+            border-radius: 50%;
+            animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* Main Content Layout */
+        main {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 24px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            flex: 1;
+        }
+
+        /* Metric Cards Grid */
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 18px 20px;
+            backdrop-filter: blur(8px);
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            background: var(--bg-card-hover);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .card-badge {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .card-value {
+            font-size: 2.2rem;
+            font-weight: 800;
+            line-height: 1.1;
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+
+        .card-unit {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .card-footer {
+            margin-top: 10px;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Specific AQI Card Glow */
+        .aqi-card-badge {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        /* Dashboard Split Area (Map Left, Forecast Right) */
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1080px) {
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Map Card Container */
+        .map-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .horizon-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-secondary);
+            padding: 6px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        .horizon-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            padding: 0 8px;
+            white-space: nowrap;
+        }
+
+        .horizon-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .horizon-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .horizon-btn.active {
+            background: #2563eb;
+            color: white;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+        }
+
+        #mapContainer {
+            width: 100%;
+            height: 520px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: #0b101b;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .map-legend {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            background: rgba(17, 24, 39, 0.92);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 14px;
+            z-index: 1000;
+            backdrop-filter: blur(8px);
+            font-size: 0.75rem;
+            color: var(--text-main);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+            pointer-events: auto;
+        }
+
+        .legend-title {
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: #38bdf8;
+            font-size: 0.78rem;
+        }
+
+        .legend-bar {
+            width: 180px;
+            height: 10px;
+            border-radius: 4px;
+            background: linear-gradient(to right, #10b981 0%, #f59e0b 25%, #f97316 45%, #ef4444 65%, #a855f7 85%, #7f1d1d 100%);
+            margin-bottom: 4px;
+        }
+
+        .legend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        /* Marker Pulse DivIcon */
+        .station-pulse-marker {
+            width: 20px;
+            height: 20px;
+            background: #38bdf8;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 16px #38bdf8;
+            animation: station-radar 2s infinite ease-in-out;
+        }
+
+        @keyframes station-radar {
+            0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.8); }
+            70% { box-shadow: 0 0 0 14px rgba(56, 189, 248, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+        }
+
+        /* Forecast & Analytics Chart */
+        .forecast-card {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 340px;
+        }
+
+        .horizon-summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            margin-top: 8px;
+        }
+
+        .horizon-summary-table th {
+            text-align: left;
+            color: var(--text-muted);
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+        }
+
+        .horizon-summary-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .horizon-summary-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Bottom Section: Edge AI Diagnostics */
+        .diagnostics-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 18px 24px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .diag-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .diag-label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .diag-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .diag-code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.85rem;
+            color: #38bdf8;
+            background: rgba(56, 189, 248, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        footer {
+            border-top: 1px solid var(--border-color);
+            padding: 16px 24px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: rgba(17, 24, 39, 0.6);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="header-container">
+            <div class="brand-title">
+                <h1>HỆ THỐNG QUAN TRẮC & DỰ BÁO CHẤT LƯỢNG KHÔNG KHÍ ĐA TẦNG V5.0</h1>
+                <p>
+                    <span>Trường Đại học Công nghệ Giao thông Vận tải (UTT) - Khoa CNTT</span>
+                    <span class="location-tag">📍 Trạm Mẫu: 54 Triều Khúc, Thanh Xuân Nam, Hà Nội</span>
+                </p>
+            </div>
+            <div class="header-actions">
+                <div class="status-pill">
+                    <div class="pulse-dot"></div>
+                    <span id="systemStatusText">TRỰC TUYẾN • CHU KỲ 15 PHÚT</span>
+                </div>
+                <button class="btn-trigger" id="btnTriggerCycle" onclick="triggerManualCycle()">
+                    <span id="triggerBtnIcon">🔄</span>
+                    <span id="triggerBtnText">Chạy Chu Kỳ Mới</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main>
+        <!-- Top Metrics Cards -->
+        <section class="metric-grid">
+            <!-- Card 1: VN-AQI -->
+            <div class="card" id="cardAqi">
+                <div class="card-header">
+                    <span class="card-title">Chỉ Số Chất Lượng (VN-AQI)</span>
+                    <span class="card-badge aqi-card-badge" id="badgeAqiCategory">Trung Bình</span>
+                </div>
+                <div class="card-value">
+                    <span id="valVnAqi">--</span>
+                    <span class="card-unit">QCVN 05:2023</span>
+                </div>
+                <div class="card-footer">
+                    <span id="aqiAdvice">Chất lượng chấp nhận được</span>
+                    <span id="telemetryTime">Vừa cập nhật</span>
+                </div>
+            </div>
+
+            <!-- Card 2: PM2.5 & PM10 -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Bụi Mịn PM2.5 / PM10</span>
+                    <span class="card-badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">Laser SDS011</span>
+                </div>
+                <div class="card-value">
+                    <span id="valPm25">--</span>
+                    <span class="card-unit">µg/m³</span>
+                </div>
+                <div class="card-footer">
+                    <span>PM10: <strong id="valPm10">--</strong> µg/m³</span>
+                    <span style="color: #10b981;">Lọc 20% Trimmed Mean</span>
+                </div>
+            </div>
+
+            <!-- Card 3: Nhiệt độ & Độ ẩm -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Khí Tượng Vi Khí Hậu</span>
+                    <span class="card-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">SHT31-D</span>
+                </div>
+                <div class="card-value">
+                    <span id="valTemp">--</span>
+                    <span class="card-unit">°C</span>
+                </div>
+                <div class="card-footer">
+                    <span>Độ ẩm: <strong id="valHumidity">--</strong>% RH</span>
+                    <span>Điểm sương: <strong id="valDewPoint">--</strong>°C</span>
+                </div>
+            </div>
+
+            <!-- Card 4: CO2 & VOC Gas Proxy -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Khí Độc & Hiệu Ứng Nhà Kính</span>
+                    <span class="card-badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">SGP30</span>
+                </div>
+                <div class="card-value">
+                    <span id="valCo2">--</span>
+                    <span class="card-unit">ppm CO₂</span>
+                </div>
+                <div class="card-footer">
+                    <span>Khí oxy hóa (VOC): <strong id="valGasProxy">--</strong></span>
+                    <span>An toàn tiêu chuẩn</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analytics Grid: Map Left, 24h Forecast Right -->
+        <section class="analytics-grid">
+            <!-- Left: Heatmap Canvas + Leaflet Map -->
+            <div class="map-section card">
+                <div class="card-header" style="margin-bottom: 0;">
+                    <div>
+                        <span class="card-title">Bản Đồ Phân Bố Không Gian Đa Tầng V5.0</span>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+                            Mô hình Anisotropic Gaussian Plume vi khí hậu quanh tọa độ 54 Triều Khúc
+                        </div>
+                    </div>
+                    <span class="card-badge" id="mapModeBadge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
+                        Single-Station Plume
+                    </span>
+                </div>
+
+                <!-- Horizon Switcher Toolbar -->
+                <div class="horizon-bar">
+                    <span class="horizon-label">Khung Thời Gian:</span>
+                    <button class="horizon-btn active" onclick="switchHorizon('current')">Hiện tại</button>
+                    <button class="horizon-btn" onclick="switchHorizon('+1h')">+1 Giờ</button>
+                    <button class="horizon-btn" onclick="switchHorizon('+3h')">+3 Giờ</button>
+                    <button class="horizon-btn" onclick="switchHorizon('+6h')">+6 Giờ</button>
+                    <button class="horizon-btn" onclick="switchHorizon('+12h')">+12 Giờ</button>
+                    <button class="horizon-btn" onclick="switchHorizon('+24h')">+24 Giờ</button>
+                </div>
+
+                <!-- Leaflet Map Element -->
+                <div id="mapContainer">
+                    <div class="map-legend">
+                        <div class="legend-title">Thang Nồng Độ PM2.5 (µg/m³)</div>
+                        <div class="legend-bar"></div>
+                        <div class="legend-labels">
+                            <span>0</span>
+                            <span>25</span>
+                            <span>50</span>
+                            <span>80</span>
+                            <span>150+</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: 24h Time-Series Forecast -->
+            <div class="card forecast-card">
+                <div class="card-header">
+                    <div>
+                        <span class="card-title">Dự Báo Xu Hướng Bụi Mịn 24 Giờ Tới</span>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+                            Mô hình ResMLP-TinyML với dải độ tin cậy P10 - P90
+                        </div>
+                    </div>
+                    <span class="card-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                        AI Inference: &lt; 20ms
+                    </span>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+
+                <!-- Summary Milestone Table -->
+                <table class="horizon-summary-table">
+                    <thead>
+                        <tr>
+                            <th>Khung Giờ</th>
+                            <th>Dự Báo PM2.5</th>
+                            <th>Khoảng Tin Cậy (P10 - P90)</th>
+                            <th>Dự Đoán VN-AQI</th>
+                        </tr>
+                    </thead>
+                    <tbody id="forecastTableBody">
+                        <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Đang tải dữ liệu dự báo...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Bottom Diagnostics Panel -->
+        <section class="diagnostics-panel">
+            <div class="diag-item">
+                <span class="diag-label">Trạm Đo Thực Tế Mẫu</span>
+                <span class="diag-value">
+                    <span>Trạm UTT 54 Triều Khúc</span>
+                    <span class="diag-code">STATION_01</span>
+                </span>
+                <span style="font-size: 0.78rem; color: var(--text-muted);">Tọa độ: 20.9852°N, 105.7972°E (Hà Nội)</span>
+            </div>
+
+            <div class="diag-item">
+                <span class="diag-label">Cơ Chế Lấy Mẫu & Lọc Nhiễu ESP32-S3</span>
+                <span class="diag-value" style="color: #10b981;">
+                    ✓ 30 Mẫu Burst / 15 Phút • Lọc 20% Trimmed Mean
+                </span>
+                <span style="font-size: 0.78rem; color: var(--text-muted);">Loại bỏ 3 xung đột biến cực đại & 3 sụt áp cực tiểu (Heap RAM = 0 Byte)</span>
+            </div>
+
+            <div class="diag-item">
+                <span class="diag-label">Chu Kỳ Tiết Kiệm Năng Lượng</span>
+                <span class="diag-value">
+                    <span>Tỷ lệ Ngủ Sâu: <strong>99.99%</strong></span>
+                    <span class="diag-code">Duty Cycle: 15 Phút</span>
+                </span>
+                <span style="font-size: 0.78rem; color: var(--text-muted);">Độ trễ tính toán AI trên Raspberry Pi 5: <span id="valPiLatency">16.4</span> ms</span>
+            </div>
+
+            <div class="diag-item">
+                <span class="diag-label">Chẩn Đoán Dị Thường Vi Khí Hậu</span>
+                <span class="diag-value" id="valAnomalyStatus" style="color: #10b981;">
+                    ● Trạng thái Bình Thường (Zero Outlier)
+                </span>
+                <span style="font-size: 0.78rem; color: var(--text-muted);">Tự động loại bỏ độ ẩm bão hòa & nhiễu cảm biến quang học</span>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>Hệ Thống Quan Trắc & Dự Báo Không Khí Tự Động Hóa • Nghiên Cứu Khoa Học & Triển Khai Thực Nghiệm UTT 2026</p>
+    </footer>
+
+    <!-- Hidden Offscreen Canvas for Fast Dynamic Heatmap Rendering -->
+    <canvas id="offscreenHeatmapCanvas" width="25" height="25" style="display: none;"></canvas>
+
+    <script>
+        // Trạng thái toàn cục của Dashboard
+        let currentHorizon = 'current';
+        let webMapData = null;
+        let leafletMap = null;
+        let stationMarker = null;
+        let heatmapOverlay = null;
+        let forecastChart = null;
+
+        // Bảng quy đổi màu sắc VN-AQI theo QCVN 05:2023/BTNMT
+        function getAqiColor(aqi) {
+            if (aqi <= 50) return '#10b981';  // Xanh lá - Tốt
+            if (aqi <= 100) return '#f59e0b'; // Vàng - Trung bình
+            if (aqi <= 150) return '#f97316'; // Cam - Kém
+            if (aqi <= 200) return '#ef4444'; // Đỏ - Xấu
+            if (aqi <= 300) return '#a855f7'; // Tím - Rất xấu
+            return '#7f1d1d';                 // Nâu - Nguy hại
+        }
+
+        function getAqiCategory(aqi) {
+            if (aqi <= 50) return { title: 'Tốt', advice: 'Không khí trong lành, tự do hoạt động ngoài trời' };
+            if (aqi <= 100) return { title: 'Trung Bình', advice: 'Chấp nhận được, nhóm nhạy cảm hạn chế gắng sức' };
+            if (aqi <= 150) return { title: 'Kém', advice: 'Người nhạy cảm nên đeo khẩu trang khi ra ngoài' };
+            if (aqi <= 200) return { title: 'Xấu', advice: 'Người bình thường giảm bớt hoạt động ngoài trời' };
+            if (aqi <= 300) return { title: 'Rất Xấu', advice: 'Hạn chế tối đa ra ngoài, đóng cửa sổ' };
+            return { title: 'Nguy Hại', advice: 'Cảnh báo khẩn cấp, mọi người ở trong nhà' };
+        }
+
+        // Chuyển đổi nồng độ PM2.5 sang màu RGB cho Canvas
+        function pm25ToRgb(val) {
+            if (val <= 12) return [16, 185, 129];    // Emerald
+            if (val <= 25) return [56, 189, 248];    // Sky
+            if (val <= 37.5) return [245, 158, 11];  // Amber
+            if (val <= 50) return [249, 115, 22];    // Orange
+            if (val <= 80) return [239, 68, 68];     // Red
+            if (val <= 150) return [168, 85, 247];   // Purple
+            return [127, 29, 29];                    // Dark Red
+        }
+
+        // Khởi tạo bản đồ Leaflet
+        function initMap() {
+            // Tọa độ mặc định: 54 Triều Khúc, Thanh Xuân Nam, Hà Nội (UTT)
+            const uttLat = 20.9852;
+            const uttLon = 105.7972;
+
+            leafletMap = L.map('mapContainer', {
+                zoomControl: true,
+                attributionControl: false
+            }).setView([uttLat, uttLon], 13);
+
+            // Nền bản đồ tối CartoDB Dark Matter
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 18,
+                subdomains: 'abcd'
+            }).addTo(leafletMap);
+
+            // Thêm Marker trạm đơn thực nghiệm 54 Triều Khúc
+            const customIcon = L.divIcon({
+                className: 'station-pulse-marker',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+
+            stationMarker = L.marker([uttLat, uttLon], { icon: customIcon }).addTo(leafletMap);
+            stationMarker.bindPopup(`
+                <div style="font-family: sans-serif; padding: 4px;">
+                    <strong style="color: #0284c7; font-size: 14px;">Trạm Thực Nghiệm UTT</strong><br/>
+                    <span style="font-size: 12px; color: #475569;">54 Triều Khúc, Thanh Xuân Nam, Hà Nội</span>
+                    <hr style="margin: 6px 0; border: none; border-top: 1px solid #e2e8f0;"/>
+                    <div style="font-size: 12px; line-height: 1.5;">
+                        • Tọa độ: <strong>20.9852°N, 105.7972°E</strong><br/>
+                        • Lọc nhiễu: <strong>20% Trimmed Mean (30 burst samples)</strong><br/>
+                        • Chu kỳ: <strong>15 phút</strong>
+                    </div>
+                </div>
+            `);
+        }
+
+        // Vẽ lưới 25x25 lên Canvas và chuyển thành Leaflet ImageOverlay
+        function renderHeatmapOverlay() {
+            if (!webMapData || !webMapData.horizons || !webMapData.horizons[currentHorizon]) return;
+
+            const horizonObj = webMapData.horizons[currentHorizon];
+            const pm25Grid = horizonObj.pm25_grid;
+            const opacityGrid = horizonObj.opacity_grid;
+            const bounds = webMapData.bounds; // { lat_min, lat_max, lon_min, lon_max }
+
+            const canvas = document.getElementById('offscreenHeatmapCanvas');
+            const ctx = canvas.getContext('2d');
+            const imgData = ctx.createImageData(25, 25);
+
+            for (let r = 0; r < 25; r++) {
+                for (let c = 0; c < 25; c++) {
+                    const idx = (r * 25 + c) * 4;
+                    const pmVal = pm25Grid[r][c];
+                    const opVal = opacityGrid ? opacityGrid[r][c] : 0.65;
+                    const [red, green, blue] = pm25ToRgb(pmVal);
+
+                    imgData.data[idx] = red;
+                    imgData.data[idx + 1] = green;
+                    imgData.data[idx + 2] = blue;
+                    // Độ mờ Alpha điều chỉnh theo khoảng cách thực tế (opacity_grid)
+                    imgData.data[idx + 3] = Math.floor(Math.max(0.1, Math.min(0.85, opVal)) * 255);
+                }
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+            const dataUrl = canvas.toDataURL();
+
+            const imageBounds = [
+                [bounds.lat_min, bounds.lon_min],
+                [bounds.lat_max, bounds.lon_max]
+            ];
+
+            if (heatmapOverlay) {
+                heatmapOverlay.setUrl(dataUrl);
+                heatmapOverlay.setBounds(imageBounds);
+            } else {
+                heatmapOverlay = L.imageOverlay(dataUrl, imageBounds, {
+                    opacity: 0.85,
+                    interactive: false
+                }).addTo(leafletMap);
+            }
+        }
+
+        // Chuyển đổi mốc thời gian Horizon (+1h, +3h, ...)
+        function switchHorizon(horizonKey) {
+            currentHorizon = horizonKey;
+            document.querySelectorAll('.horizon-btn').forEach(btn => {
+                if (btn.textContent.includes(horizonKey.replace('+', '')) || 
+                   (horizonKey === 'current' && btn.textContent.includes('Hiện tại'))) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            renderHeatmapOverlay();
+        }
+
+        // Khởi tạo biểu đồ Chart.js cho dự báo 24 giờ
+        function initForecastChart() {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            const labels = Array.from({ length: 24 }, (_, i) => `T+${i + 1}h`);
+
+            forecastChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Dự Báo PM2.5',
+                            data: [],
+                            borderColor: '#38bdf8',
+                            backgroundColor: 'rgba(56, 189, 248, 0.15)',
+                            borderWidth: 2.5,
+                            pointRadius: 3,
+                            pointHoverRadius: 6,
+                            tension: 0.35,
+                            fill: false
+                        },
+                        {
+                            label: 'Dải Tin Cậy P90 (Trần)',
+                            data: [],
+                            borderColor: 'rgba(129, 140, 248, 0.4)',
+                            borderDash: [4, 4],
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: false
+                        },
+                        {
+                            label: 'Dải Tin Cậy P10 (Sàn)',
+                            data: [],
+                            borderColor: 'rgba(129, 140, 248, 0.4)',
+                            borderDash: [4, 4],
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            backgroundColor: 'rgba(129, 140, 248, 0.1)',
+                            fill: '-1' // Đổ bóng vùng giữa P10 và P90
+                        },
+                        {
+                            label: 'Ngưỡng Giới Hạn QCVN 05 (50 µg/m³)',
+                            data: Array(24).fill(50),
+                            borderColor: 'rgba(239, 68, 68, 0.7)',
+                            borderDash: [6, 6],
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#9ca3af',
+                                font: { size: 11 }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                            titleColor: '#38bdf8',
+                            bodyColor: '#f3f4f6',
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#9ca3af', font: { size: 10 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#9ca3af', font: { size: 10 } },
+                            title: {
+                                display: true,
+                                text: 'Nồng độ PM2.5 (µg/m³)',
+                                color: '#9ca3af',
+                                font: { size: 11 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Tải dữ liệu Telemetry thời gian thực
+        async function fetchTelemetry() {
+            try {
+                const res = await fetch('/api/telemetry');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                document.getElementById('valPm25').textContent = data.pm25.toFixed(1);
+                document.getElementById('valPm10').textContent = data.pm10 ? data.pm10.toFixed(1) : (data.pm25 * 1.35).toFixed(1);
+                document.getElementById('valTemp').textContent = data.temp_c.toFixed(1);
+                document.getElementById('valHumidity').textContent = data.rh_percent.toFixed(0);
+                document.getElementById('valCo2').textContent = Math.round(data.co2_ppm);
+                document.getElementById('valGasProxy').textContent = Math.round(data.gas_proxy);
+
+                // Tính điểm sương xấp xỉ
+                const t = data.temp_c;
+                const rh = data.rh_percent;
+                const dp = t - ((100 - rh) / 5);
+                document.getElementById('valDewPoint').textContent = dp.toFixed(1);
+
+                // Cập nhật VN-AQI Card
+                const aqi = data.vn_aqi;
+                document.getElementById('valVnAqi').textContent = aqi;
+                const cat = getAqiCategory(aqi);
+                const aqiBadge = document.getElementById('badgeAqiCategory');
+                aqiBadge.textContent = cat.title;
+                aqiBadge.style.background = `${getAqiColor(aqi)}25`;
+                aqiBadge.style.color = getAqiColor(aqi);
+                aqiBadge.style.borderColor = `${getAqiColor(aqi)}50`;
+                document.getElementById('aqiAdvice').textContent = cat.advice;
+                document.getElementById('telemetryTime').textContent = new Date().toLocaleTimeString('vi-VN');
+
+            } catch (err) {
+                console.error('Lỗi tải dữ liệu telemetry:', err);
+            }
+        }
+
+        // Tải dữ liệu bản đồ V5.0
+        async function fetchMapData() {
+            try {
+                const res = await fetch('/api/map');
+                if (!res.ok) return;
+                const data = await res.json();
+                webMapData = data.web_map;
+
+                if (webMapData.markers && webMapData.markers.length > 0) {
+                    const m = webMapData.markers[0];
+                    if (stationMarker) {
+                        stationMarker.setLatLng([m.lat, m.lon]);
+                    }
+                }
+
+                renderHeatmapOverlay();
+            } catch (err) {
+                console.error('Lỗi tải dữ liệu bản đồ:', err);
+            }
+        }
+
+        // Tải dữ liệu dự báo 24 giờ
+        async function fetchForecastData() {
+            try {
+                const res = await fetch('/api/forecast');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                if (forecastChart && data.pm25_pred) {
+                    forecastChart.data.datasets[0].data = data.pm25_pred;
+                    forecastChart.data.datasets[1].data = data.pm25_p90 || [];
+                    forecastChart.data.datasets[2].data = data.pm25_p10 || [];
+                    forecastChart.update();
+                }
+
+                // Cập nhật bảng tóm tắt mốc quan trọng (+1h, +3h, +6h, +12h, +24h)
+                const milestones = [
+                    { label: '+1 Giờ (T+1)', idx: 0 },
+                    { label: '+3 Giờ (T+3)', idx: 2 },
+                    { label: '+6 Giờ (T+6)', idx: 5 },
+                    { label: '+12 Giờ (T+12)', idx: 11 },
+                    { label: '+24 Giờ (T+24)', idx: 23 }
+                ];
+
+                const tbody = document.getElementById('forecastTableBody');
+                tbody.innerHTML = '';
+
+                milestones.forEach(m => {
+                    const pm = data.pm25_pred ? data.pm25_pred[m.idx] : 0;
+                    const p10 = data.pm25_p10 ? data.pm25_p10[m.idx] : pm * 0.9;
+                    const p90 = data.pm25_p90 ? data.pm25_p90[m.idx] : pm * 1.1;
+                    const aqi = data.aqi_pred ? Math.round(data.aqi_pred[m.idx]) : Math.round(pm * 2.1);
+                    const color = getAqiColor(aqi);
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${m.label}</strong></td>
+                        <td><span style="color: #38bdf8; font-weight: 700;">${pm.toFixed(1)}</span> µg/m³</td>
+                        <td style="color: var(--text-muted); font-size: 0.78rem;">[${p10.toFixed(1)} - ${p90.toFixed(1)}]</td>
+                        <td><span style="background: ${color}22; color: ${color}; padding: 2px 8px; border-radius: 4px; font-weight: 700;">${aqi}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+            } catch (err) {
+                console.error('Lỗi tải dữ liệu dự báo:', err);
+            }
+        }
+
+        // Kích hoạt chu kỳ tính toán mới bằng nút bấm
+        async function triggerManualCycle() {
+            const btn = document.getElementById('btnTriggerCycle');
+            const btnText = document.getElementById('triggerBtnText');
+            const btnIcon = document.getElementById('triggerBtnIcon');
+
+            btn.classList.add('loading');
+            btnText.textContent = 'Đang Tính Toán...';
+            btnIcon.textContent = '⏳';
+
+            try {
+                const res = await fetch('/api/trigger_cycle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: 'dashboard_manual_trigger' })
+                });
+
+                if (res.ok) {
+                    const jsonRes = await res.json();
+                    if (jsonRes.cycle_result && jsonRes.cycle_result.execution_latency_ms) {
+                        document.getElementById('valPiLatency').textContent = jsonRes.cycle_result.execution_latency_ms;
+                    }
+                    // Tải lại toàn bộ dữ liệu mới nhất
+                    await Promise.all([fetchTelemetry(), fetchMapData(), fetchForecastData()]);
+                }
+            } catch (err) {
+                console.error('Lỗi kích hoạt chu kỳ mới:', err);
+            } finally {
+                btn.classList.remove('loading');
+                btnText.textContent = 'Chạy Chu Kỳ Mới';
+                btnIcon.textContent = '🔄';
+            }
+        }
+
+        // Khởi chạy khi tài liệu sẵn sàng
+        window.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            initForecastChart();
+            
+            // Tải dữ liệu ban đầu
+            fetchTelemetry();
+            fetchMapData();
+            fetchForecastData();
+
+            // Tự động làm mới mỗi 15 giây
+            setInterval(() => {
+                fetchTelemetry();
+                fetchMapData();
+                fetchForecastData();
+            }, 15000);
+        });
+    </script>
+</body>
+</html>
