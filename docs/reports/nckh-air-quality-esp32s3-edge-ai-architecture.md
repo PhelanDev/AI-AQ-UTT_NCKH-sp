@@ -3,7 +3,8 @@
 > **Nền tảng phần cứng**: ESP32-S3-WROOM-1 (N16R8)  
 > **Kiến trúc**: Edge AI Multi-Node Distributed Architecture (Nhiều Hộp Biên $\rightarrow$ 1 Server Trung Tâm)  
 > **Quy chế tài liệu**: **Living Document (Tài liệu động)** — Cập nhật liên tục mọi thay đổi, quyết định kỹ thuật và trạng thái chốt phương án trong từng phiên làm việc.  
-> **Tài liệu chuyên sâu mảng AI/TinyML**: Xem tại [`nckh-ai-tinyml-architecture-and-training.md`](./nckh-ai-tinyml-architecture-and-training.md).
+> **Tài liệu chuyên sâu mảng AI/TinyML**: Xem tại [`nckh-ai-tinyml-architecture-and-training.md`](./nckh-ai-tinyml-architecture-and-training.md).  
+> **Kế hoạch Firmware ESP32-S3 & Đồng bộ Chu kỳ 15 Phút (Deep Sleep & Pi 5)**: Xem tại [`nckh-ke-hoach-firmware-esp32s3-va-chu-ky-15p-pi5.md`](./nckh-ke-hoach-firmware-esp32s3-va-chu-ky-15p-pi5.md).
 
 ---
 
@@ -38,11 +39,13 @@
 ### 2.3. Bảng phân bổ chân (Pinout Mapping) theo đúng BOM cấp vốn
 | Cụm chức năng / Thiết bị | Chân GPIO khuyến nghị | Giao thức | Ghi chú kỹ thuật |
 | :--- | :--- | :--- | :--- |
-| **Cảm biến Bụi chính: PMS7003 (PM1)** | `GPIO17 (RX1)`, `GPIO18 (TX1)` | Hardware UART1 | 9600 bps, đo tán xạ laser liên tục |
-| **Cảm biến Bụi phụ: PMS7003 (PM2 - Dual PM)** | `GPIO15 (RX2)`, `GPIO16 (TX2)` | Hardware UART2 | 9600 bps, đối chiếu chéo sai số với PM1 |
+| **Cảm biến Bụi chính: PMS7003 (PM1)** | `GPIO17 (RX1)`, `GPIO18 (TX1)` | Hardware UART1 | 9600 bps, đọc nồng độ PM1.0, PM2.5, PM10 sau 30s warm-up |
+| **Cảm biến Bụi phụ: PMS7003 (PM2 - Dual PM)** | `GPIO15 (RX2)`, `GPIO16 (TX2)` | Hardware UART2 | 9600 bps, đối chiếu chéo sai số với PM1 ($\Delta PM$) |
+| **Điều khiển Bật/Tắt Quạt & Laser PMS** | `GPIO6` (`RTC_GPIO6`) | Digital Output (`RTC Hold`) | Mức HIGH: Bật quạt/laser (30s làm ấm); Mức LOW chốt suốt 868s ngủ sâu |
 | **Cảm biến CO2: SenseAir S8 (LP/0053)** | `GPIO8 (RX)`, `GPIO9 (TX)` | UART (Modbus) | 9600 bps, công nghệ NDIR chuẩn Thụy Điển |
 | **Cảm biến Khí & Nhiệt ẩm: SGP41 + SHT40** | `GPIO4 (SDA)`, `GPIO5 (SCL)` | I2C (Bus 0) | SGP41 (TVOC/NOx) & SHT40 (±0.2°C, ±1.8% RH) |
 | **Màn hình màu LCD 2.8 inch SPI** | `GPIO11(MOSI), 12(SCK), 10(CS), 13(DC), 14(RST)` | SPI (Bus 2) | Hiển thị thông số realtime, đồ thị tại trạm |
+| **Đèn nền màn hình (`LCD_BL`)** | `GPIO7` (`RTC_GPIO7`) | Digital / PWM Output | Bật sáng màn hình khi cập nhật; điều khiển tắt để tiết kiệm pin |
 | **Module 4G LTE + GPS: SIMCOM A7677S GNSS** | `GPIO19 (RX)`, `GPIO20 (TX)` | UART AT Cmd | Đẩy dữ liệu MQTT qua mạng di động và tọa độ vệ tinh |
 | **LED RGB chỉ thị chất lượng AQI** | `GPIO48` (RGB Onboard) | WS2812B | Báo dải màu AQI Xanh - Vàng - Cam - Đỏ - Tím |
 
@@ -152,13 +155,15 @@
 
 Nhằm đảm bảo tính chính xác tuyệt đối khi triển khai thực địa lâu dài và đo đối chuẩn với trạm chuẩn quốc gia, hệ thống tích hợp 3 cơ chế xử lý kỹ thuật:
 
-#### 1. Chu kỳ Làm ấm Cảm biến (Sensor Warm-up Cycle - 30 giây)
+#### 1. Chu kỳ Làm ấm Cảm biến & Máy Trạng Thái 15 Phút (15-Minute FSM & Warm-up Cycle)
 - **Vấn đề thực tế**: Cảm biến quang học Plantower PMS7003 sử dụng quạt hút siêu nhỏ (brushless fan) và diode phát laser 650nm. Khi node thức dậy từ trạng thái tiết kiệm điện (Deep Sleep), quạt mất $15 - 20\text{s}$ để thiết lập luồng khí ổn định (laminar airflow) và diode quang mất $10 - 15\text{s}$ để ổn định nhiệt độ/bước sóng. Dữ liệu đọc trong 30 giây đầu bị méo dạng và nhiễu cực mạnh.
-- **Giải pháp Firmware**: Thiết lập máy trạng thái (FSM):
+- **Giải pháp Firmware (FSM 5 pha chuẩn hóa trong `power_scheduler.h/.cpp`)**:
   ```
-  [DEEP SLEEP] ──> [BẬT PMS_SET = HIGH] ──> [ĐỢI 30S WARM-UP (Bỏ frame UART)] ──> [LẤY MẪU CHUẨN] ──> [NGỦ TIẾP]
+  [WAKEUP (0s)] ──> [WARMUP 30s (PMS_SET=1)] ──> [ACQUIRE & INFER 1s] ──> [DISPLAY & PUBLISH 1s] ──> [PREPARE SLEEP & DEEP SLEEP 868s (PMS_SET=0)]
   ```
-  Trong 30 giây đầu tiên, động cơ TinyML trả về cờ cảnh báo `TINYML_ANOMALY_WARMUP_INCOMPLETE` và khóa không cho phép suy luận sai lệch.
+  Trong 30 giây đầu tiên, động cơ TinyML trả về cờ cảnh báo `TINYML_ANOMALY_WARMUP_INCOMPLETE`, giữ `PIN_PMS_SET = HIGH` và khóa không cho phép suy luận hay phát tin MQTT sai lệch. Khi `warmup_elapsed >= 30s`, hệ thống thực hiện đo, suy luận TinyML ResMLP (<0.35ms), cập nhật màn hình LCD ST7789 SPI, gửi JSON Telemetry và kéo `PIN_PMS_SET = LOW` (chốt bằng `rtc_gpio_hold_en`) trước khi vào `esp_deep_sleep_start(868s)`.
+- **Bảo toàn trạng thái trôi buồng đo qua Deep Sleep (`RTC_DATA_ATTR`)**:
+  Các biến `s_ema_drift`, `s_drift_initialized`, và `s_boot_cycle_count` được đặt trong vùng nhớ RTC Slow SRAM (8KB) có nguồn nuôi độc lập (`TINYML_RTC_ATTR`), đảm bảo thuật toán phát hiện bám bụi thấu kính `TINYML_ANOMALY_CHAMBER_DRIFT` duy trì liên tục qua hàng nghìn chu kỳ ngủ sâu. Chi tiết kiến trúc lưu tại [`nckh-ke-hoach-firmware-esp32s3-va-chu-ky-15p-pi5.md`](./nckh-ke-hoach-firmware-esp32s3-va-chu-ky-15p-pi5.md).
 
 #### 2. Khử Lệch Pha Lấy Mẫu Giữa Node và Trạm Chuẩn (Temporal Resampling)
 - **Vấn đề thực tế**: Trạm chuẩn quốc gia (BAM-1020 của CEM) hay mạng lưới PAM Air luôn công bố dữ liệu dưới dạng **trung bình trượt lùi 1 giờ (1-hour backward rolling average)** tại mốc giờ chẵn $HH:00$ (tổng hợp từ 60 phút trước đó). Nếu lấy số đo chu kỳ 30 giây của node map trực tiếp với số đo 1 giờ của trạm chuẩn, sai lệch pha thời gian sẽ làm chỉ số tương quan $R^2$ tụt dốc thảm hại.
@@ -243,6 +248,9 @@ storage,  data, littlefs,0xb20000,0x4c0000,
 | **2026-11-02** | **Môi trường Đa Nhiễu & Triệt tiêu Học Vẹt** | Thiết lập bộ mô phỏng 5 lớp nhiễu vật lý (`multi_noise_simulator.py`): trễ ẩm Köhler phân kỳ theo $dRH/dt$, biến thiên thành phần hạt bụi (soot vs mineral dust vs sulfate), bất đối xứng kênh đôi Dual PMS7003, tự gia nhiệt bo mạch ESP32-S3 (+1.2°C đến +2.4°C), và dynamic online jittering. Phân chia dữ liệu strictly chronological cách ly 48h. | **Đã hoàn thành** |
 | **2026-11-02** | **Huấn luyện 200 Epochs Cả 2 Mô Hình & Xuất xưởng C++/ONNX** | Huấn luyện tối thiểu 200 epochs cho cả 2 mô hình: (1) Model 1 Edge TinyML (`MultiSensorResMLP`, 19.585 tham số) đạt $R^2 = 0.9789$, $MAE = 4.46\ \mu\text{g/m}^3$, giảm 25.3% sai số so với cảm biến thô, lượng tử hóa INT8 18.84 KB Flash, 0 Byte Heap RAM, trễ $9.50\ \mu\text{s}$; (2) Model 2 Central AI (`HierarchicalCentralAI`, 42.952 tham số) đạt +1h $R^2 = 0.9385$, +3h $R^2 = 0.7031$, xuất ONNX 175 KB, chênh lệch số học $< 1.2 \times 10^{-7}$. Toàn bộ 197 tests hệ thống passed 100%. | **Đã hoàn thành** |
 | **2026-11-02** | **Hoàn thành Hệ Thống V3.0 Toàn Diện** | Hoàn tất nâng cấp V3.0 cho toàn hệ thống: (1) Mô phỏng phồng ẩm thể tích phi tuyến ($RH > 80-95\%$) chuẩn vật lý, đưa baseline thô về $R^2=0.5926, MAE=15.74\ \mu\text{g/m}^3$; (2) Mô hình biên `MultiSensorResMLP` (19.585 params, 8 đầu vào) đạt $R^2=0.9784, MAE=4.36\ \mu\text{g/m}^3$ ($\Delta R^2=+0.3858$, giảm $72.29\%$ sai số MAE), phân biệt sương ($C=0.420$) và khói ($C=0.898$), INT8 18.84 KB Flash, 0B Heap RAM, trễ $9.80\ \mu\text{s}$ trên host ($< 0.35\text{ ms}$ trên ESP32-S3); (3) `HierarchicalCentralAI` (42.952 params) triển khai Early Stopping tại Epoch 45 (khôi phục Epoch 30 tối ưu, val $R^2=0.4745$), triệt tiêu phân kỳ +34% và loại bỏ $R^2$ âm ở mọi chân trời (+1h đến +24h); (4) Đồng bộ hóa toàn bộ C++ header `esp/include/model_data.h` và ONNX `central_unified_ai.onnx` (187 KB). | **Đã hoàn thành** |
+
+---
+| **2026-11-08** | **Chu kỳ 15 Phút Deep Sleep & Triển khai Firmware ESP32-S3** | Hoàn thành toàn diện mã nguồn firmware ESP32-S3 và đồng bộ chu kỳ 15 phút: (1) Khóa chân chuẩn BOM và cô lập GPIO33..37 (`board_pins.h`); (2) Drivers parser UART PMS7003, Modbus S8, I2C SHT40/SGP41 (`sensor_drivers.h/.cpp`); (3) HAL hiển thị ST7789 LCD, tính VN-AQI và MQTT JSON (`display_mqtt_hal.h/.cpp`); (4) FSM 5 pha chu kỳ 15 phút ($30\text{s}$ Warmup + $2\text{s}$ Active + $868\text{s}$ Deep Sleep) và bảo tồn `s_ema_drift` trong `RTC_DATA_ATTR` (`power_scheduler.h/.cpp`, `main_firmware.cpp`); (5) Kiểm thử 100 chu kỳ thức-ngủ đạt 100% PASS (`test_firmware_15min_cycle.cpp`). Chi tiết lưu tại [`nckh-ke-hoach-firmware-esp32s3-va-chu-ky-15p-pi5.md`](./nckh-ke-hoach-firmware-esp32s3-va-chu-ky-15p-pi5.md). | **Đã hoàn thành** |
 
 ---
 *Tài liệu kỹ thuật lưu trữ phục vụ đề tài Nghiên cứu Khoa học (Cập nhật định kỳ).*

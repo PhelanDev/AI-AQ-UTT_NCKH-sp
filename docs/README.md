@@ -13,8 +13,9 @@ docs/
 │   ├── Bao_Cao_Tong_Hop_Du_An_Va_GPIO_AirGradient_OpenAir.docx
 │   ├── Tai_Lieu_Ky_Thuat_Huong_Di_Quy_Trinh_Edge_AI_Hop_Quan_Trac.docx
 │   ├── Tong_Quan_Du_An_AirGradient_OpenAir_Pi5_AI.docx
-│   ├── nckh-air-quality-esp32s3-edge-ai-architecture.md # Living Architecture (ESP32-S3)
-│   └── nckh-ai-tinyml-architecture-and-training.md      # Living AI & Training Specs
+│   ├── [nckh-air-quality-esp32s3-edge-ai-architecture.md](./reports/nckh-air-quality-esp32s3-edge-ai-architecture.md) # Living Architecture (ESP32-S3, Pinout & FSM 15p)
+│   ├── [nckh-ai-tinyml-architecture-and-training.md](./reports/nckh-ai-tinyml-architecture-and-training.md)      # Living AI & Training Specs (TinyML INT8 & Central DL)
+│   └── [nckh-ke-hoach-firmware-esp32s3-va-chu-ky-15p-pi5.md](./reports/nckh-ke-hoach-firmware-esp32s3-va-chu-ky-15p-pi5.md) # Kế hoạch Firmware ESP32-S3 & Chu kỳ 15 phút (Deep Sleep / Pi 5 Kriging)
 ├── hardware/                    # Bản thiết kế phần cứng và danh mục linh kiện
 │   └── AirGradient_OpenAir_Final_CustomBOM.xlsx # Bảng BOM chi tiết từng linh kiện, chi phí, footprint
 ├── figures/                     # Hình vẽ kiến trúc & biểu đồ mô hình hóa (chuẩn xuất bản 300 DPI)
