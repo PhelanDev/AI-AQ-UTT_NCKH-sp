@@ -607,6 +607,143 @@ static void test_100_cycles_simulation_and_duty_timing(void) {
     printf("  -> PASS: 100 cycles completed (90,000s / 25h simulated), zero memory leaks, timing exact.\n");
 }
 
+// ============================================================================
+// TEST 12: 30-Sample Burst Accumulator & 20% Trimmed Mean Outlier Rejection
+// ============================================================================
+static void test_burst_accumulator_trimmed_mean_filtering(void) {
+    printf("[TEST 12] Testing 30-sample burst accumulator & 20%% trimmed mean filtering...\n");
+
+    SensorBurstAccumulator acc;
+    burst_accumulator_init(&acc);
+    assert(acc.count == 0);
+    assert(acc.is_full == false);
+
+    // Push 30 samples:
+    // 24 clean baseline samples: PM1 ~ 40.0, PM2 ~ 40.0, PM10 ~ 55.0, T = 25.0, RH = 70.0, CO2 = 450.0, Gas = 100.0
+    // 3 extreme high spikes: PM1 = 500.0, PM2 = 480.0, CO2 = 2500.0 (simulating laser dust flare / insect)
+    // 3 extreme low drops: PM1 = 0.0, PM2 = 0.0, PM10 = 0.0 (simulating voltage drop / UART packet drop)
+    for (int i = 0; i < SENSOR_BURST_SAMPLE_COUNT; i++) {
+        RawSensorSample s;
+        s.timestamp = 1731063600 + i;
+        s.pm1_raw = 40.0f;
+        s.pm2_raw = 40.0f;
+        s.pm10_raw = 55.0f;
+        s.temp_c = 25.0f;
+        s.rh_percent = 70.0f;
+        s.co2_ppm = 450.0f;
+        s.gas_proxy = 100.0f;
+
+        // Inject 3 high spikes
+        if (i == 5 || i == 14 || i == 23) {
+            s.pm1_raw = 500.0f;
+            s.pm2_raw = 480.0f;
+            s.co2_ppm = 2500.0f;
+        }
+        // Inject 3 low drops
+        if (i == 2 || i == 18 || i == 27) {
+            s.pm1_raw = 0.0f;
+            s.pm2_raw = 0.0f;
+            s.pm10_raw = 0.0f;
+        }
+
+        bool full = burst_accumulator_push(&acc, &s);
+        if (i < SENSOR_BURST_SAMPLE_COUNT - 1) {
+            assert(full == false);
+        } else {
+            assert(full == true);
+        }
+    }
+
+    assert(acc.count == SENSOR_BURST_SAMPLE_COUNT);
+    assert(acc.is_full == true);
+
+    // Pushing beyond 30 samples must be protected against overflow
+    RawSensorSample extra;
+    memset(&extra, 0, sizeof(extra));
+    bool overflow_check = burst_accumulator_push(&acc, &extra);
+    assert(overflow_check == true);
+    assert(acc.count == SENSOR_BURST_SAMPLE_COUNT);
+
+    // Calculate Trimmed Mean (trim_count = 3 -> discards 3 lowest & 3 highest, averages 24 middle)
+    RawSensorSample filtered;
+    bool filter_ok = burst_filter_trimmed_mean(&acc, SENSOR_BURST_TRIM_COUNT, &filtered);
+    assert(filter_ok == true);
+
+    // Verify 100% rejection of 3 spikes (500) and 3 drops (0):
+    // All 24 core samples have pm1_raw == 40.0f -> filtered mean MUST be exactly 40.0f!
+    assert(fabsf(filtered.pm1_raw - 40.0f) < 1e-4f);
+    assert(fabsf(filtered.pm2_raw - 40.0f) < 1e-4f);
+    assert(fabsf(filtered.pm10_raw - 55.0f) < 1e-4f);
+    assert(fabsf(filtered.temp_c - 25.0f) < 1e-4f);
+    assert(fabsf(filtered.rh_percent - 70.0f) < 1e-4f);
+    assert(fabsf(filtered.co2_ppm - 450.0f) < 1e-4f);
+    assert(fabsf(filtered.gas_proxy - 100.0f) < 1e-4f);
+
+    // Contrast with naive un-trimmed average to prove mathematical necessity:
+    // Naive sum of pm1_raw: (24 * 40.0 + 3 * 500.0 + 3 * 0.0) / 30 = 82.0 ug/m3 (+105% error!)
+    float naive_sum = 0.0f;
+    for (int i = 0; i < SENSOR_BURST_SAMPLE_COUNT; i++) naive_sum += acc.samples[i].pm1_raw;
+    float naive_avg = naive_sum / (float)SENSOR_BURST_SAMPLE_COUNT;
+    assert(fabsf(naive_avg - 82.0f) < 1e-4f);
+
+    printf("  -> PASS: 20%% Trimmed Mean successfully rejected +105%% noise distortion (Clean: 40.0 vs Naive: 82.0 ug/m3).\n");
+}
+
+// ============================================================================
+// TEST 13: Integrated 15-Minute Cycle with Burst Denoising Engine
+// ============================================================================
+static void test_burst_duty_cycle_integration(void) {
+    printf("[TEST 13] Testing integrated 15-min cycle with burst denoising...\n");
+
+    SensorBurstAccumulator acc;
+    burst_accumulator_init(&acc);
+
+    for (int i = 0; i < SENSOR_BURST_SAMPLE_COUNT; i++) {
+        RawSensorSample s;
+        s.timestamp = 1731063600 + i;
+        s.pm1_raw = 35.0f + (float)(i % 5 - 2) * 0.5f; // 34.0 .. 36.0
+        s.pm2_raw = 35.2f + (float)(i % 5 - 2) * 0.4f; // 34.4 .. 36.0
+        s.pm10_raw = 48.0f;
+        s.temp_c = 26.0f;
+        s.rh_percent = 82.0f;  // Deliquescence nồm ẩm
+        s.co2_ppm = 450.0f;
+        s.gas_proxy = 100.0f;
+
+        // Occasional laser flare spike
+        if (i == 7) s.pm1_raw = 400.0f;
+        if (i == 21) s.pm2_raw = 380.0f;
+
+        burst_accumulator_push(&acc, &s);
+    }
+
+    EdgeCycleResult res = edge_execute_15min_duty_cycle_burst(&acc, 30.5f, true);
+
+    // Warmup >= 30s -> nominal cycle completion
+    assert(res.anomaly_code == TINYML_ANOMALY_OK);
+    assert(res.entered_deep_sleep == true);
+    assert(res.pms_set_pin_level == false);
+    assert(res.deep_sleep_duration_sec == ESP_DEEP_SLEEP_SEC);
+    assert(res.lcd_updated == true);
+    assert(res.telemetry_sent == true);
+
+    // PM2.5 calibrated under RH=82% Deliquescence regime must be scaled by C ~ 0.45..0.60
+    // Input baseline ~35 ug/m3 -> Calibrated ~16..22 ug/m3 (not distorted by 400 ug/m3 spike!)
+    assert(res.pm25_calibrated >= 14.0f && res.pm25_calibrated <= 25.0f);
+    assert(res.vn_aqi > 0 && res.vn_aqi <= 70);
+
+    // Fallback safety test: NULL accumulator or empty accumulator
+    EdgeCycleResult fallback_null = edge_execute_15min_duty_cycle_burst(NULL, 30.5f, true);
+    assert(fallback_null.entered_deep_sleep == true);
+
+    SensorBurstAccumulator empty_acc;
+    burst_accumulator_init(&empty_acc);
+    EdgeCycleResult fallback_empty = edge_execute_15min_duty_cycle_burst(&empty_acc, 30.5f, true);
+    assert(fallback_empty.entered_deep_sleep == true);
+
+    printf("  -> PASS: Burst FSM cycle complete (Calibrated: %.2f ug/m3, VN-AQI: %d, Sleep: %u s).\n",
+           res.pm25_calibrated, res.vn_aqi, res.deep_sleep_duration_sec);
+}
+
 int main(void) {
     printf("====================================================================\n");
     printf("   ESP32-S3 FIRMWARE & 15-MIN DUTY CYCLE TEST SUITE (TASKS 1 & 2)  \n");
@@ -624,6 +761,9 @@ int main(void) {
     test_fsm_warmup_complete_nominal_cycle();
     test_100_cycles_simulation_and_duty_timing();
 
-    printf("\n>>> ALL 11 TESTS (TASKS 1 & 2) PASSED SUCCESSFULLY! <<<\n");
+    test_burst_accumulator_trimmed_mean_filtering();
+    test_burst_duty_cycle_integration();
+
+    printf("\n>>> ALL 13 TESTS (INCLUDING 30-SAMPLE BURST DENOISING) PASSED SUCCESSFULLY! <<<\n");
     return 0;
 }

@@ -102,24 +102,35 @@ void setup(void) {
     // 2. Initialize GPIO with Octal PSRAM safety locking
     init_hardware_gpio_safely();
 
-    // 3. Sensor Warmup Simulation & Sample Acquisition
+    // 3. Sensor Warmup Simulation & 30-Sample Burst Acquisition with Trimmed Mean Filter
     // In production firmware, a non-blocking 30-second delay or RTC timer tracks warmup.
-    // Here we acquire the multisensor readings from UART1, UART2, UART3, and I2C0.
-    RawSensorSample sample;
-    sample.timestamp = 1731063600; // Epoch timestamp
-    sample.pm1_raw = 38.5f;        // PMS1 raw PM2.5
-    sample.pm2_raw = 39.1f;        // PMS2 raw PM2.5 (cross-check)
-    sample.pm10_raw = 52.0f;       // PMS1 raw PM10
-    sample.temp_c = 28.5f;         // SHT40 temperature
-    sample.rh_percent = 84.0f;     // SHT40 relative humidity (Deliquescence regime)
-    sample.co2_ppm = 520.0f;       // SenseAir S8 NDIR CO2
-    sample.gas_proxy = 110.0f;     // SGP41 VOC index
+    // After warmup, 30 consecutive samples are gathered into the burst accumulator.
+    SensorBurstAccumulator burst_acc;
+    burst_accumulator_init(&burst_acc);
 
-    // 4. Execute Complete 15-Minute FSM Duty Cycle
+    for (int i = 0; i < SENSOR_BURST_SAMPLE_COUNT; i++) {
+        RawSensorSample sample;
+        sample.timestamp = 1731063600 + i;
+        sample.pm1_raw = 38.5f + (float)(i % 3 - 1) * 0.4f; // 38.1 .. 38.9
+        sample.pm2_raw = 39.1f + (float)(i % 3 - 1) * 0.3f; // 38.8 .. 39.4
+        sample.pm10_raw = 52.0f;
+        sample.temp_c = 28.5f;
+        sample.rh_percent = 84.0f;     // SHT40 relative humidity (Deliquescence regime)
+        sample.co2_ppm = 520.0f;       // SenseAir S8 NDIR CO2
+        sample.gas_proxy = 110.0f;     // SGP41 VOC index
+
+        // Inject simulated random hardware glitches/spikes to demonstrate 20% trimmed mean filtering
+        if (i == 5) sample.pm1_raw = 450.0f; // Transient laser dust flare
+        if (i == 18) sample.pm2_raw = 0.0f;  // Transient UART glitch/drop
+
+        burst_accumulator_push(&burst_acc, &sample);
+    }
+
+    // 4. Execute Complete 15-Minute FSM Duty Cycle with 30-Sample Burst Filter
     const float warmup_elapsed = 30.2f; // Warmup complete (>30s)
     const bool mqtt_online = true;      // 4G/WiFi connected
 
-    EdgeCycleResult result = edge_execute_15min_duty_cycle(&sample, warmup_elapsed, mqtt_online);
+    EdgeCycleResult result = edge_execute_15min_duty_cycle_burst(&burst_acc, warmup_elapsed, mqtt_online);
 
     printf("[FSM] Status: AnomalyCode=%d, PM2.5_Cal=%.2f ug/m3, VN-AQI=%d\n",
            result.anomaly_code, result.pm25_calibrated, result.vn_aqi);

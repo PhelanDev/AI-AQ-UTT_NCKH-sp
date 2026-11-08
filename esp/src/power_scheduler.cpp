@@ -178,3 +178,125 @@ EdgeCycleResult edge_execute_15min_duty_cycle(const RawSensorSample *raw_sample,
 
     return res;
 }
+
+
+// ============================================================================
+// Burst Sampling & Robust Trimmed Mean Outlier Filter (30 Samples)
+// ============================================================================
+
+void burst_accumulator_init(SensorBurstAccumulator *acc) {
+    if (!acc) return;
+    memset(acc, 0, sizeof(*acc));
+    acc->count = 0;
+    acc->is_full = false;
+}
+
+bool burst_accumulator_push(SensorBurstAccumulator *acc, const RawSensorSample *sample) {
+    if (!acc || !sample) return false;
+    if (acc->count < SENSOR_BURST_SAMPLE_COUNT) {
+        acc->samples[acc->count++] = *sample;
+        if (acc->count >= SENSOR_BURST_SAMPLE_COUNT) {
+            acc->is_full = true;
+        }
+    }
+    return acc->is_full;
+}
+
+static void sort_floats_insertion(float *arr, size_t n) {
+    for (size_t i = 1; i < n; i++) {
+        float key = arr[i];
+        int j = (int)i - 1;
+        while (j >= 0 && arr[j] > key) {
+            arr[j + 1] = arr[j];
+            j--;
+        }
+        arr[j + 1] = key;
+    }
+}
+
+static float compute_trimmed_mean(const float *raw_vals, size_t n, uint8_t trim_count) {
+    if (n == 0) return 0.0f;
+    if (n <= (size_t)(2 * trim_count)) {
+        // Fallback to simple arithmetic average if not enough samples to trim
+        float sum = 0.0f;
+        for (size_t i = 0; i < n; i++) sum += raw_vals[i];
+        return sum / (float)n;
+    }
+
+    float sorted[SENSOR_BURST_SAMPLE_COUNT];
+    size_t count = (n < SENSOR_BURST_SAMPLE_COUNT) ? n : SENSOR_BURST_SAMPLE_COUNT;
+    for (size_t i = 0; i < count; i++) {
+        sorted[i] = raw_vals[i];
+    }
+    sort_floats_insertion(sorted, count);
+
+    size_t core_start = trim_count;
+    size_t core_end = count - trim_count;
+    float sum = 0.0f;
+    for (size_t i = core_start; i < core_end; i++) {
+        sum += sorted[i];
+    }
+    return sum / (float)(core_end - core_start);
+}
+
+bool burst_filter_trimmed_mean(const SensorBurstAccumulator *acc,
+                               uint8_t trim_count,
+                               RawSensorSample *out_filtered_sample) {
+    if (!acc || !out_filtered_sample || acc->count == 0) {
+        return false;
+    }
+
+    size_t n = acc->count;
+    float channel_buf[SENSOR_BURST_SAMPLE_COUNT];
+
+    memset(out_filtered_sample, 0, sizeof(*out_filtered_sample));
+    out_filtered_sample->timestamp = acc->samples[n / 2].timestamp;
+
+    // 1. pm1_raw
+    for (size_t i = 0; i < n; i++) channel_buf[i] = acc->samples[i].pm1_raw;
+    out_filtered_sample->pm1_raw = compute_trimmed_mean(channel_buf, n, trim_count);
+
+    // 2. pm2_raw
+    for (size_t i = 0; i < n; i++) channel_buf[i] = acc->samples[i].pm2_raw;
+    out_filtered_sample->pm2_raw = compute_trimmed_mean(channel_buf, n, trim_count);
+
+    // 3. pm10_raw
+    for (size_t i = 0; i < n; i++) channel_buf[i] = acc->samples[i].pm10_raw;
+    out_filtered_sample->pm10_raw = compute_trimmed_mean(channel_buf, n, trim_count);
+
+    // 4. temp_c
+    for (size_t i = 0; i < n; i++) channel_buf[i] = acc->samples[i].temp_c;
+    out_filtered_sample->temp_c = compute_trimmed_mean(channel_buf, n, trim_count);
+
+    // 5. rh_percent
+    for (size_t i = 0; i < n; i++) channel_buf[i] = acc->samples[i].rh_percent;
+    out_filtered_sample->rh_percent = compute_trimmed_mean(channel_buf, n, trim_count);
+
+    // 6. co2_ppm
+    for (size_t i = 0; i < n; i++) channel_buf[i] = acc->samples[i].co2_ppm;
+    out_filtered_sample->co2_ppm = compute_trimmed_mean(channel_buf, n, trim_count);
+
+    // 7. gas_proxy
+    for (size_t i = 0; i < n; i++) channel_buf[i] = acc->samples[i].gas_proxy;
+    out_filtered_sample->gas_proxy = compute_trimmed_mean(channel_buf, n, trim_count);
+
+    return true;
+}
+
+EdgeCycleResult edge_execute_15min_duty_cycle_burst(const SensorBurstAccumulator *burst_acc,
+                                                    float warmup_elapsed_sec,
+                                                    bool mqtt_connected) {
+    if (!burst_acc || burst_acc->count == 0) {
+        RawSensorSample zero_sample;
+        memset(&zero_sample, 0, sizeof(zero_sample));
+        return edge_execute_15min_duty_cycle(&zero_sample, warmup_elapsed_sec, mqtt_connected);
+    }
+
+    RawSensorSample clean_sample;
+    bool ok = burst_filter_trimmed_mean(burst_acc, SENSOR_BURST_TRIM_COUNT, &clean_sample);
+    if (!ok) {
+        clean_sample = burst_acc->samples[0];
+    }
+
+    return edge_execute_15min_duty_cycle(&clean_sample, warmup_elapsed_sec, mqtt_connected);
+}

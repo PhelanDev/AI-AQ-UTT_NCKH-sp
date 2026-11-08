@@ -38,6 +38,43 @@ typedef struct {
     float gas_proxy;     // Sensirion SGP41 Raw Gas Index / VOC proxy
 } RawSensorSample;
 
+// ============================================================================
+// Burst Sampling & Robust Outlier Denoising (30 Samples / 20% Trimmed Mean)
+// ============================================================================
+#define SENSOR_BURST_SAMPLE_COUNT 30
+#define SENSOR_BURST_TRIM_COUNT   3
+
+typedef struct {
+    RawSensorSample samples[SENSOR_BURST_SAMPLE_COUNT];
+    uint8_t count;
+    bool is_full;
+} SensorBurstAccumulator;
+
+/**
+ * @brief Resets and initializes the burst sample accumulator (0 Byte Heap).
+ */
+void burst_accumulator_init(SensorBurstAccumulator *acc);
+
+/**
+ * @brief Pushes a raw sensor sample into the burst accumulator.
+ * @return true if accumulator reached SENSOR_BURST_SAMPLE_COUNT; false otherwise.
+ */
+bool burst_accumulator_push(SensorBurstAccumulator *acc, const RawSensorSample *sample);
+
+/**
+ * @brief Robust Outlier Denoising via 20% Trimmed Mean:
+ * For each sensor channel, sorts all samples, discards trim_count min drops and
+ * trim_count max spikes, and calculates arithmetic mean of the core remaining samples.
+ *
+ * @param acc Pointer to accumulator containing samples.
+ * @param trim_count Number of minimum and maximum outliers to discard per channel.
+ * @param out_filtered_sample Output pointer receiving clean representative sample.
+ * @return true if filtering succeeded; false if insufficient samples (count <= 2*trim_count).
+ */
+bool burst_filter_trimmed_mean(const SensorBurstAccumulator *acc,
+                               uint8_t trim_count,
+                               RawSensorSample *out_filtered_sample);
+
 // Complete result output of 15-minute duty cycle execution
 typedef struct {
     TinyML_AnomalyCode anomaly_code;    // Anomaly status from warmup, drift, or spike checks
@@ -52,29 +89,18 @@ typedef struct {
 
 /**
  * @brief Executes one full 15-minute ultra-low-power duty cycle through the FSM.
- *
- * Enforces:
- *   - If warmup_elapsed_sec < 30.0f (PMS7003_WARMUP_SECONDS), blocks inference,
- *     returns TINYML_ANOMALY_WARMUP_INCOMPLETE, keeps PMS_SET HIGH (pms_set_pin_level = true),
- *     suppresses LCD update and MQTT publishing to prevent false readings.
- *   - If warmup_elapsed_sec >= 30.0f:
- *       1. Advances WAKEUP -> WARMUP -> ACQUIRE_INFER -> DISPLAY_PUBLISH -> PREPARE_SLEEP -> DEEP_SLEEP.
- *       2. Computes calibrated PM2.5 via TinyML 2D Deliquescence gated neural network.
- *       3. Computes VN-AQI per QCVN 05:2023.
- *       4. Updates LCD screen buffer.
- *       5. Formats MQTT JSON; if mqtt_connected sends telemetry and flushes ring buffer;
- *          if disconnected, enqueues packet into zero-heap offline ring buffer.
- *       6. Pulls PIN_PMS_SET LOW (pms_set_pin_level = false), turning off fan and laser.
- *       7. Configures RTC sleep duration to 868s and enters deep sleep.
- *
- * @param raw_sample Pointer to current multisensor sample.
- * @param warmup_elapsed_sec Warmup time elapsed in seconds.
- * @param mqtt_connected Connectivity state to MQTT broker.
- * @return EdgeCycleResult Full status and metrics of the cycle.
  */
 EdgeCycleResult edge_execute_15min_duty_cycle(const RawSensorSample *raw_sample,
                                              float warmup_elapsed_sec,
                                              bool mqtt_connected);
+
+/**
+ * @brief Executes one full 15-minute cycle with automatic 30-sample burst denoising.
+ * Applies 20% trimmed mean to filter outliers before invoking FSM.
+ */
+EdgeCycleResult edge_execute_15min_duty_cycle_burst(const SensorBurstAccumulator *burst_acc,
+                                                    float warmup_elapsed_sec,
+                                                    bool mqtt_connected);
 
 /**
  * @brief Returns the current state of the power scheduler FSM.
