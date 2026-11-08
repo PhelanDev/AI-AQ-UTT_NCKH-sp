@@ -13,6 +13,9 @@ from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn, nsdecls
 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+FIGURES_DIR = os.path.join(PROJECT_ROOT, "docs", "figures")
+
 def generate_doc():
     doc = docx.Document()
 
@@ -308,7 +311,7 @@ def generate_doc():
     make_callout("Nguyên lý bảo toàn chất lượng dữ liệu",
                  "Mô hình 1 giữ vai trò chốt chặn chất lượng tại điểm đo: chỉ khi dữ liệu cảm biến được triệt tiêu hoàn toàn các sai số quang học do sương ẩm, số liệu gửi về trung tâm mới đạt độ tin cậy chuẩn để làm đầu vào cho Mô hình 2 dự báo xu hướng tương lai.")
 
-    add_image_box(r"d:\AQ\docs\figures\fig1_two_tier_ai_architecture.png",
+    add_image_box(os.path.join(FIGURES_DIR, "fig1_two_tier_ai_architecture.png"),
                   "Hình 1: Sơ đồ kiến trúc phân tầng 2 Mô hình AI trong hệ thống quan trắc (Tầng biên & Tầng máy chủ)",
                   width=Inches(6.2))
 
@@ -338,7 +341,7 @@ def generate_doc():
     add_bullet("Kỷ luật thực thi Zero-Heap an toàn nhúng",
                "Toàn bộ thuật toán suy luận được đóng gói bằng C++ độc lập, không sử dụng cấp phát bộ nhớ động trong suốt thời gian chạy (0 Byte Heap), ngăn chặn triệt để nguy cơ tràn RAM hay treo vi điều khiển ngoài thực địa.")
 
-    add_image_box(r"d:\AQ\docs\figures\fig2_model1_edge_pipeline.png",
+    add_image_box(os.path.join(FIGURES_DIR, "fig2_model1_edge_pipeline.png"),
                   "Hình 2: Sơ đồ nguyên lý quy trình hiệu chuẩn tín hiệu bù nồm ẩm tại biên (Mô hình 1)",
                   width=Inches(6.2))
 
@@ -367,7 +370,7 @@ def generate_doc():
     add_bullet("Cơ chế vận hành tự động theo chu kỳ",
                "Được điều phối tự động định kỳ mỗi khi có khối dữ liệu đo mới được cập nhật từ trạm, chiếm dụng tài nguyên tính toán và bộ nhớ cực thấp, không làm ảnh hưởng đến các tác vụ cơ sở dữ liệu và truyền thông của máy chủ.")
 
-    add_image_box(r"d:\AQ\docs\figures\fig3_model2_forecasting_pipeline.png",
+    add_image_box(os.path.join(FIGURES_DIR, "fig3_model2_forecasting_pipeline.png"),
                   "Hình 3: Sơ đồ nguyên lý quy trình dự báo xu hướng ô nhiễm chuỗi thời gian (Mô hình 2)",
                   width=Inches(6.2))
 
@@ -387,9 +390,10 @@ def generate_doc():
     create_table(["Tiêu chí kỹ thuật", "Mô hình 1: Hiệu chuẩn tại biên", "Mô hình 2: Dự báo chuỗi thời gian"], summary_rows,
                  col_widths=[Inches(1.8), Inches(2.3), Inches(2.3)])
 
-    path_report = os.path.abspath(r"d:\AQ\docs\reports\Du_Kien_Xay_Dung_2_Mo_Hinh_AI.docx")
-    path_tailieu = os.path.abspath(r"d:\AQ\tailieu\Du_Kien_Xay_Dung_2_Mo_Hinh_AI.docx")
+    path_report = os.path.abspath(os.path.join(PROJECT_ROOT, "docs", "reports", "Du_Kien_Xay_Dung_2_Mo_Hinh_AI.docx"))
+    path_tailieu = os.path.abspath(os.path.join(PROJECT_ROOT, "tailieu", "Du_Kien_Xay_Dung_2_Mo_Hinh_AI.docx"))
 
+    os.makedirs(os.path.dirname(path_report), exist_ok=True)
     doc.save(path_report)
     print("SUCCESS: Saved to official directory:", path_report)
 

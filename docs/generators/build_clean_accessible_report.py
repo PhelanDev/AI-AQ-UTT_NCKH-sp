@@ -13,6 +13,9 @@ from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn, nsdecls
 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+FIGURES_DIR = os.path.join(PROJECT_ROOT, "docs", "figures")
+
 def create_report():
     doc = docx.Document()
 
@@ -390,10 +393,10 @@ def create_report():
     add_bullet("Hai khối liên kết tắt liên tiếp (Residual Blocks)", "Mỗi khối gồm 96 nơ-ron. Điểm đặc biệt của khối Residual là đường dẫn tắt (Skip Connection) cộng trực tiếp tín hiệu đầu vào khối với tín hiệu sau biến đổi: h = ReLU(W * x + b + x). Cơ chế này giúp mạng nơ-ron học sâu nhưng không bị suy biến gradient, bảo toàn các đặc trưng vật lý quan trọng.")
     add_bullet("Tầng đầu ra (fc_out)", "Thu hẹp từ 96 chiều về 1 giá trị đầu ra duy nhất để tính toán hệ số hiệu chuẩn.")
 
-    add_image_box(r"d:\AQ\ai\docs_assets\fig1_robust_resmlp_architecture.png",
+    add_image_box(os.path.join(FIGURES_DIR, "fig1_robust_resmlp_architecture.png"),
                   "Hình 1: Sơ đồ kiến trúc tổng thể của mô hình học sâu Robust ResMLP 19k tham số")
 
-    add_image_box(r"d:\AQ\ai\docs_assets\fig2_residual_block_skip_connection.png",
+    add_image_box(os.path.join(FIGURES_DIR, "fig2_residual_block_skip_connection.png"),
                   "Hình 2: Cơ chế liên kết tắt (Skip Connection) trong khối Residual giúp bảo toàn tín hiệu")
 
     add_h2("3.4. Điểm cốt lõi: Dự đoán hệ số co có chặn vật lý thay vì đoán mò nồng độ bụi")
@@ -404,7 +407,7 @@ def create_report():
     add_bullet("Khoảng biến thiên an toàn", "Nhờ chặn vật lý, hệ số C luôn luôn nằm chặt chẽ trong khoảng từ 0.25 đến 1.05. Sau đó, nồng độ bụi chuẩn được tính bằng: PM_calib = PM_avg * C.")
     add_bullet("Ý nghĩa vật lý", "Khi trời khô ráo không có sương, C xấp xỉ 0.95 - 1.0 (giữ nguyên số đo gốc của cảm biến). Khi nồm ẩm nặng làm hạt bụi ngậm nước phồng to gấp 2 - 3 lần, C tự động hạ xuống mức 0.35 - 0.45 để kéo số đo về đúng thực tế. Hệ thống bảo đảm 100% không bao giờ sinh ra số bụi âm hoặc biến dạng dữ liệu.")
 
-    add_image_box(r"d:\AQ\ai\docs_assets\fig4_bounded_output_activation.png",
+    add_image_box(os.path.join(FIGURES_DIR, "fig4_bounded_output_activation.png"),
                   "Hình 3: Hàm kích hoạt Sigmoid có chặn giới hạn hệ số C nghiêm ngặt trong khoảng [0.25, 1.05]")
 
     add_h2("3.5. Cổng hòa trộn vi khí hậu thích ứng (Adaptive Humidity Gating)")
@@ -413,7 +416,7 @@ def create_report():
     add_bullet("Khi độ ẩm dưới 55%", "Cổng hòa trộn đóng hoàn toàn, hệ số C được cố định ở mức 0.95 (nhường quyền kiểm soát cho cảm biến gốc, giữ nguyên độ nhạy thiết bị).")
     add_bullet("Khi độ ẩm từ 55% đến trên 75%", "Cổng hòa trộn mở dần một cách mượt mà theo hàm phi tuyến, kích hoạt toàn lực mô hình AI để loại bỏ hiện tượng đo ảo khi bước vào vùng nồm ẩm cao.")
 
-    add_image_box(r"d:\AQ\ai\docs_assets\fig3_adaptive_humidity_gating.png",
+    add_image_box(os.path.join(FIGURES_DIR, "fig3_adaptive_humidity_gating.png"),
                   "Hình 4: Đường cong kích hoạt của Cổng hòa trộn độ ẩm thích ứng với tâm chuyển tiếp 55% RH")
 
     add_h1("4. THUẬT TOÁN KHỬ NHIỄU VÀ BẢO VỆ CẢM BIẾN KÉP")
@@ -537,9 +540,10 @@ def create_report():
     add_p("Bằng cách ứng dụng mô hình mạng nơ-ron sâu siêu nhẹ (RobustResMLP 19k) kết hợp với các cơ chế vật lý thông minh (dự đoán hệ số co có chặn, cổng hòa trộn độ ẩm thích ứng và lọc cảm biến kép), đề tài mở ra hướng đi đột phá: nâng tầm chất lượng dữ liệu của cảm biến bụi giá rẻ tiệm cận độ chính xác của trạm đo chuẩn quốc tế mà không làm tăng chi phí phần cứng hay tiêu hao năng lượng.")
     add_p("Nhóm nghiên cứu kính đề nghị Hội đồng Khoa học xem xét phê duyệt đề cương và tạo điều kiện hỗ trợ địa điểm thử nghiệm thực địa đối chứng để đề tài sớm được triển khai và đưa vào ứng dụng thực tiễn.")
 
-    path_root = os.path.abspath(r"d:\AQ\Bao_Cao_Ban_Dau_NCKH_Edge_AI.docx")
-    path_tailieu = os.path.abspath(r"d:\AQ\tailieu\Bao_Cao_Ban_Dau_NCKH_Edge_AI.docx")
+    path_root = os.path.abspath(os.path.join(PROJECT_ROOT, "docs", "reports", "Bao_Cao_Ban_Dau_NCKH_Edge_AI.docx"))
+    path_tailieu = os.path.abspath(os.path.join(PROJECT_ROOT, "tailieu", "Bao_Cao_Ban_Dau_NCKH_Edge_AI.docx"))
 
+    os.makedirs(os.path.dirname(path_root), exist_ok=True)
     doc.save(path_root)
     os.makedirs(os.path.dirname(path_tailieu), exist_ok=True)
     shutil.copy2(path_root, path_tailieu)

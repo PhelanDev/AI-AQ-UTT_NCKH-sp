@@ -82,10 +82,10 @@ IS_PROTOTYPE_DEMO: bool = True
 _RAW_STATIONS_DATA = [
     (
         "STATION_01",
-        "HUS_NguyenTrai",
-        "Trạm Cảm Biến Prototype (334 Nguyễn Trãi - ĐH KHTN)",
-        20.9982,
-        105.8065,
+        "UTT_TrieuKhuc",
+        "Trạm Cảm Biến Prototype (54 Triều Khúc - ĐH Công Nghệ GTVT)",
+        20.9852,
+        105.7972,
         18.0,
         "traffic_corridor",
     ),
