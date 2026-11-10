@@ -95,40 +95,30 @@ float tinyml_infer_c_factor_multisensor(float pm_avg, float diff_pm, float r_pm,
         norm_in[i] = val;
     }
 
-    // Tang 1: fc_in (8 -> 96)
-    float h0[TINYML_HIDDEN_DIM];
-    for (int i = 0; i < TINYML_HIDDEN_DIM; i++) {
+    // Tang 1: fc1 (8 -> 32)
+    float h0[TINYML_HIDDEN1_DIM];
+    for (int i = 0; i < TINYML_HIDDEN1_DIM; i++) {
         float sum = 0.0f;
         for (int j = 0; j < TINYML_INPUT_DIM; j++) {
-            sum += norm_in[j] * ((float)FC_IN_WEIGHT[i][j]);
+            sum += norm_in[j] * ((float)FC1_WEIGHT[i][j]);
         }
-        h0[i] = relu(sum * FC_IN_SCALE + FC_IN_BIAS[i]);
+        h0[i] = relu(sum * FC1_SCALE + FC1_BIAS[i]);
     }
 
-    // Residual Block 1: block1 (96 -> 96) + Skip Connection h0
-    float h1[TINYML_HIDDEN_DIM];
-    for (int i = 0; i < TINYML_HIDDEN_DIM; i++) {
+    // Tang 2: fc2 (32 -> 16)
+    float h1[TINYML_HIDDEN2_DIM];
+    for (int i = 0; i < TINYML_HIDDEN2_DIM; i++) {
         float sum = 0.0f;
-        for (int j = 0; j < TINYML_HIDDEN_DIM; j++) {
-            sum += h0[j] * ((float)FC_BLOCK1_WEIGHT[i][j]);
+        for (int j = 0; j < TINYML_HIDDEN1_DIM; j++) {
+            sum += h0[j] * ((float)FC2_WEIGHT[i][j]);
         }
-        h1[i] = relu(sum * FC_BLOCK1_SCALE + FC_BLOCK1_BIAS[i]) + h0[i];
+        h1[i] = relu(sum * FC2_SCALE + FC2_BIAS[i]);
     }
 
-    // Residual Block 2: block2 (96 -> 96) + Skip Connection h1 (tai su dung mang h0 lam bo dem Stack)
-    float* h2 = h0;
-    for (int i = 0; i < TINYML_HIDDEN_DIM; i++) {
-        float sum = 0.0f;
-        for (int j = 0; j < TINYML_HIDDEN_DIM; j++) {
-            sum += h1[j] * ((float)FC_BLOCK2_WEIGHT[i][j]);
-        }
-        h2[i] = relu(sum * FC_BLOCK2_SCALE + FC_BLOCK2_BIAS[i]) + h1[i];
-    }
-
-    // Tang Output: fc_out (96 -> 1)
+    // Tang Output: fc_out (16 -> 1)
     float raw_out = 0.0f;
-    for (int j = 0; j < TINYML_HIDDEN_DIM; j++) {
-        raw_out += h2[j] * ((float)FC_OUT_WEIGHT[0][j]);
+    for (int j = 0; j < TINYML_HIDDEN2_DIM; j++) {
+        raw_out += h1[j] * ((float)FC_OUT_WEIGHT[0][j]);
     }
     raw_out = raw_out * FC_OUT_SCALE + FC_OUT_BIAS[0];
 

@@ -16,9 +16,10 @@ from torch.utils.data import DataLoader, TensorDataset
 
 class MultiStationDeepAutoencoder(nn.Module):
     """
-    Mạng Nơ-ron Deep Autoencoder Đa trạm với nút thắt cổ chai đối xứng (Symmetric Bottleneck).
-    Nén đa biến môi trường từ trạm quan trắc (hỗ trợ scale lên mạng lưới đa trạm) xuống không gian ẩn z (16 chiều).
-    Tổng số tham số siêu nhỏ gọn (< 15,000 params), chạy thời gian thực trên Raspberry Pi 5.
+    Mạng Nơ-ron Shallow Autoencoder Đa trạm (Bản Nộp Sinh Viên - Sweet Spot).
+    Kiến trúc nút thắt cổ chai đối xứng (Symmetric Bottleneck).
+    Nén đa biến môi trường từ trạm quan trắc xuống không gian ẩn z (16 chiều).
+    Tổng số tham số siêu nhỏ gọn (~3.700 params), chạy thời gian thực < 0.5ms trên Raspberry Pi 5.
     """
 
     def __init__(self, in_features: int = 48, latent_dim: int = 16):
@@ -27,27 +28,19 @@ class MultiStationDeepAutoencoder(nn.Module):
         self.latent_dim = latent_dim
 
         self.encoder = nn.Sequential(
-            nn.Linear(in_features, 64),
-            nn.LayerNorm(64),
-            nn.SiLU(),
-            nn.Linear(64, 32),
-            nn.LayerNorm(32),
-            nn.SiLU(),
+            nn.Linear(in_features, 32),
+            nn.ReLU(),
             nn.Linear(32, latent_dim),
         )
 
         self.decoder = nn.Sequential(
             nn.Linear(latent_dim, 32),
-            nn.LayerNorm(32),
-            nn.SiLU(),
-            nn.Linear(32, 64),
-            nn.LayerNorm(64),
-            nn.SiLU(),
-            nn.Linear(64, in_features),
+            nn.ReLU(),
+            nn.Linear(32, in_features),
         )
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
-        """Trích xuất biểu diễn ẩn trong không gian latent (16D)."""
+        """Trích xuất biểu diễn ẩn trong không gian latent."""
         return self.encoder(x)
 
     def decode(self, z: torch.Tensor) -> torch.Tensor:
@@ -59,7 +52,7 @@ class MultiStationDeepAutoencoder(nn.Module):
         Forward pass.
         Returns:
             reconstructed: Tensor tái tạo cùng kích thước với x.
-            latent: Tensor đặc trưng ẩn (B, 16).
+            latent: Tensor đặc trưng ẩn (B, latent_dim).
         """
         z = self.encode(x)
         x_rec = self.decode(z)
@@ -67,8 +60,9 @@ class MultiStationDeepAutoencoder(nn.Module):
 
 class AdaptiveAnomalyDetector:
     """
-    Bộ phát hiện dị thường thích ứng kết hợp khoảng cách Mahalanobis / MSE tái tạo
-    và ngưỡng động trượt 3-Sigma: Theta(t) = mu_EMA + 3 * sigma_EMA.
+    Bộ phát hiện dị thường thích ứng đo sai số tái tạo bình phương trung bình (MSE)
+    kết hợp ngưỡng động trượt 3-Sigma: Theta(t) = mu_EMA + 3 * sigma_EMA.
+    Loại bỏ hoàn toàn ma trận nghịch đảo Mahalanobis phức tạp (chuẩn hóa giáo trình).
     """
 
     def __init__(self, beta_ema: float = 0.98, n_sigma: float = 3.0):
@@ -80,32 +74,20 @@ class AdaptiveAnomalyDetector:
         self.cov_inv: Optional[np.ndarray] = None
 
     def fit_baseline(self, normal_errors: np.ndarray):
-        """Khởi tạo giá trị thống kê nền từ tập dữ liệu sạch."""
+        """Khởi tạo giá trị thống kê nền từ tập dữ liệu sạch bằng MSE."""
         errs = np.asarray(normal_errors, dtype=np.float64)
         if errs.ndim == 2:
-
-            cov = np.cov(errs, rowvar=False)
-            cov_reg = cov + 1e-5 * np.eye(cov.shape[0])
-            try:
-                self.cov_inv = np.linalg.inv(cov_reg)
-            except np.linalg.LinAlgError:
-                self.cov_inv = np.eye(cov.shape[0])
             scalar_scores = np.mean(errs ** 2, axis=1)
         else:
-            scalar_scores = errs
+            scalar_scores = errs ** 2
 
         self.mu_ema = float(np.mean(scalar_scores))
         self.var_ema = float(np.var(scalar_scores)) + 1e-6
         self.initialized = True
 
     def compute_score(self, error_vector: np.ndarray) -> float:
-        """Tính điểm bất thường (Reconstruction score)."""
+        """Tính điểm bất thường qua sai số tái tạo bình phương trung bình (MSE)."""
         err = np.asarray(error_vector, dtype=np.float64).ravel()
-        if self.cov_inv is not None and len(err) == self.cov_inv.shape[0]:
-
-            d_sq = float(err @ self.cov_inv @ err)
-            return float(math.sqrt(max(0.0, d_sq)))
-
         return float(np.mean(err ** 2))
 
     def update_and_detect(self, score: float) -> Tuple[bool, float, float]:

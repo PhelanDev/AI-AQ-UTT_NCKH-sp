@@ -84,7 +84,7 @@ class CentralAIEngine:
 
         # 1. Forecaster 14D (M3)
         self.forecaster = DilatedTCNBiGRUForecaster(
-            in_features=14, tcn_channels=32, gru_hidden=64, out_steps=24, out_targets=2
+            in_features=14, tcn_channels=32, gru_hidden=32, out_steps=24, out_targets=2
         ).to(self.device)
         if forecaster_weights and os.path.exists(forecaster_weights):
             self.forecaster.load_state_dict(torch.load(forecaster_weights, map_location=self.device, weights_only=True))
@@ -137,6 +137,10 @@ class CentralAIEngine:
             self.reset_history_buffer()
         except Exception:
             pass
+
+    def process_frame(self, *args, **kwargs):
+        """Alias cho process_telemetry_frame."""
+        return self.process_telemetry_frame(*args, **kwargs)
 
     def reset_history_buffer(self) -> None:
         """Đặt lại bộ đệm vòng lịch sử đa kênh."""
@@ -614,6 +618,8 @@ class CentralAIEngine:
                 horizons_dict[h_key] = {
                     "pm25_grid": pm_g,
                     "aqi_grid": aqi_g,
+                    "grid_pm25": pm_g,
+                    "grid_aqi": aqi_g,
                     "opacity_grid": heatmap_multi["opacity_grid"],
                     "min_pm25": float(np.min(pm_g)),
                     "max_pm25": float(np.max(pm_g)),
@@ -624,11 +630,23 @@ class CentralAIEngine:
                     "lon_axis": heatmap_multi["lon_axis"],
                 }
 
+            station_forecasts = {}
+            for i in range(self.n_stations):
+                sid = self.station_ids[i]
+                station_forecasts[sid] = {
+                    "station_id": sid,
+                    "pm25_pred": pm25_list,
+                    "aqi_pred": aqi_list,
+                }
+
             web_map_v5 = {
                 "mode": heatmap_multi["mode"],
+                "num_active_stations": 8,
                 "active_stations_count": 8,
                 "markers": markers,
                 "horizons": horizons_dict,
+                "current_map": horizons_dict.get("current", {}),
+                "forecast_maps": {k: v for k, v in horizons_dict.items() if k != "current"},
                 "bounds": heatmap_multi["bounds"],
                 "wind_vector": [wind_u, wind_v],
             }
@@ -637,6 +655,9 @@ class CentralAIEngine:
 
             return {
                 "timestamp": time.time(),
+                "num_active_stations": 8,
+                "station_forecasts": station_forecasts,
+                "spatial_maps": web_map_v5,
                 "web_map": web_map_v5,
                 "spatial_heatmap": spatial_heatmap_compat,
                 "resource_duty_cycle": {
@@ -926,8 +947,14 @@ class CentralAIEngine:
 
         st_aqis = _vectorized_vn_aqi_pm25(st_mat[:, 0])
         markers = []
+        station_forecasts = {}
         for i in range(n_active):
             st = active_stations[i]
+            station_forecasts[st.id] = {
+                "station_id": st.id,
+                "pm25_pred": [float(p) for p in pm25_forecasts[i]],
+                "aqi_pred": [float(a) for a in aqi_forecasts[i]],
+            }
             markers.append({
                 "id": st.id,
                 "name": st.display_name if hasattr(st, "display_name") else st.name,
@@ -947,6 +974,8 @@ class CentralAIEngine:
             horizons_dict[h_key] = {
                 "pm25_grid": pm_g,
                 "aqi_grid": aqi_g,
+                "grid_pm25": pm_g,
+                "grid_aqi": aqi_g,
                 "opacity_grid": heatmap_multi["opacity_grid"],
                 "min_pm25": float(np.min(pm_g)),
                 "max_pm25": float(np.max(pm_g)),
@@ -959,9 +988,12 @@ class CentralAIEngine:
 
         web_map_v5 = {
             "mode": heatmap_multi["mode"],
-            "active_stations_count": n_active,
+            "num_active_stations": int(n_active),
+            "active_stations_count": int(n_active),
             "markers": markers,
             "horizons": horizons_dict,
+            "current_map": horizons_dict.get("current", {}),
+            "forecast_maps": {k: v for k, v in horizons_dict.items() if k != "current"},
             "bounds": heatmap_multi["bounds"],
             "wind_vector": [wind_u, wind_v],
         }
@@ -983,6 +1015,9 @@ class CentralAIEngine:
 
         return {
             "timestamp": time.time(),
+            "num_active_stations": int(n_active),
+            "station_forecasts": station_forecasts,
+            "spatial_maps": web_map_v5,
             "web_map": web_map_v5,
             "spatial_heatmap": spatial_heatmap_compat,
             "resource_duty_cycle": {

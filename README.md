@@ -1,145 +1,113 @@
-# Hệ Thống Quan Trắc Chất Lượng Không Khí Prototype Kết Hợp TinyML Biên (ESP32-S3) & Gateway Trung Tâm (Raspberry Pi 5)
-
-> **Đề tài Nghiên Cứu Khoa Học (NCKH)**: Nghiên cứu, thiết kế và chế tạo trạm cảm biến chất lượng không khí chi phí thấp (**Phiên bản Thử Nghiệm / Prototype Demo 1 Trạm**), tích hợp thuật toán học máy biên (TinyML) bù sai số do nồm ẩm và điều phối phân tích dữ liệu thời gian thực trên Gateway nhúng Raspberry Pi 5.
->
-> 📍 **Tọa độ mặc định Trạm Prototype (`STATION_01`)**: Trường Đại học Công nghệ Giao thông Vận tải (UTT - 54 Triều Khúc, Thanh Xuân Nam, Thanh Xuân, Hà Nội: `lat: 20.9852, lon: 105.7972`).
+# HỆ THỐNG QUAN TRẮC VÀ DỰ BÁO CHẤT LƯỢNG KHÔNG KHÍ (AIoT PRODUCTION ARCHITECTURE)
+> **Trường Đại học Công nghệ Giao thông Vận tải (UTT)** - Số 54 Triều Khúc, Thanh Xuân, Hà Nội  
+> **Kiến trúc**: Edge TinyML trên vi điều khiển ESP32-S3 & Central Gateway AI trên Raspberry Pi 5  
+> **Triết lý thiết kế**: *Pragmatic Engineering • Zero Over-Engineering • Deterministic Execution*
 
 ---
 
-## 🏛️ 1. Kiến Trúc Tổng Thể Hệ Thống V5.0 (Multi-Tier Adaptive Architecture)
+## 📌 1. TỔNG QUAN HỆ THỐNG
 
-Hệ thống được thiết kế theo mô hình **Hierarchical Edge-Central Distributed Architecture** (Kiến trúc phân tán Biên - Trung tâm) thích ứng linh hoạt từ **01 trạm Prototype** đến **mạng lưới $N$ trạm đa điểm**:
-1. **Tại nút cảm biến biên (Edge Node Prototype - ESP32-S3)**: Hiện tượng phồng hạt sương do nồm ẩm đặc thù miền Bắc ($RH > 80\%$) gây sai số quang học lên đến $300\% - 500\%$ ở cảm biến tán xạ laser PMS7003. Thuật toán **TinyML Robust ResMLP (INT8)** được nhúng trực tiếp vào vi điều khiển để khử sai số ngay tại nguồn phát ($0\text{ Byte}$ Heap RAM, trễ $< 0.35\text{ ms}$).
-2. **Tại máy tính trung tâm (Central Gateway - Raspberry Pi 5)**: Đóng vai trò Gateway thu thập dữ liệu thời gian thực từ trạm Prototype hoặc mạng lưới $N$ trạm, tích hợp mô hình AI trung tâm thống nhất **`HierarchicalCentralAI`** (42.952 tham số) thực hiện song song 2 nhiệm vụ:
-   - **Nhánh Dự báo 24 giờ**: Dự báo đa bước $+1\text{h}, +3\text{h}, +6\text{h}, +12\text{h}, +24\text{h}$ cho từng trạm dạng batch $(N, 24, 16)$, xuất phân vị $P_{10}, P_{50}, P_{90}$ và chỉ số VN-AQI.
-   - **Nhánh Phát hiện Dị thường 16D**: Tái tạo vector đặc trưng và tính ngưỡng Mahalanobis độc lập cho từng trạm, phát hiện chính xác lỗi trôi dạt, kẹt cảm biến ngay cả khi chỉ có 1 trạm duy nhất.
-3. **Động cơ Bản đồ Nhiệt Thích ứng (Adaptive Spatial & Web Mapping Engine)**:
-   - **Khi $N = 1$ trạm Prototype**: Hiển thị **đúng 01 marker** tại 54 Triều Khúc (không sinh trạm ảo) + Phủ quầng tán xạ **Anisotropic Gaussian Plume** xuôi theo hướng gió cùng ma trận độ mờ **`opacity_grid`** (tâm trạm đậm $1.0$, rìa xa mờ dần $< 0.15$ trong suốt).
-   - **Khi $N = 2$ trạm**: Hiển thị 2 markers + Nội suy dải màu liên tục **IDW** ($p=2.0$).
-   - **Khi $N \ge 3$ trạm**: Hiển thị $N$ markers + Kích hoạt toàn diện phân tích tương quan độ trễ, WLS Wind Vector và nội suy vi phân **Ordinary Kriging 2D** kèm bộ đệm trọng số ma trận $K^{-1} G$ siêu tốc ($< 0.05\text{ ms}$).
+Dự án phát triển một hệ thống quan trắc và dự báo nồng độ ô nhiễm bụi mịn $PM_{2.5}$ vi khí hậu thời gian thực, phục vụ khuôn viên giảng đường và các nút giao thông lân cận trường ĐH Công nghệ GTVT (UTT).
 
-```mermaid
-graph TD
-    subgraph EdgeSensors["🟢 TẦNG BIÊN: NÚT CẢM BIẾN PROTOTYPE (01 Trạm ESP32-S3 @ UTT 54 Triều Khúc)"]
-        S1["Dual PMS7003 (UART)"] --> FE["Kỹ nghệ đặc trưng:\nT_dp, Delta_PM, R_pm"]
-        S2["SHT40 (I2C)"] --> FE
-        FE --> TML["Robust ResMLP 19k (INT8)\nLatency < 0.35ms | 0B Heap"]
-        TML --> ESP_OUT["Dữ liệu PM2.5 đã bù nồm ẩm thời gian thực"]
-    end
+Hệ thống được thiết kế theo mô hình **AIoT 2 tầng phân cấp**:
+1. **Tầng Trạm Đo Biên (Edge TinyML - ESP32-S3)**: 
+   * Thu thập dữ liệu từ cảm biến bụi **Plantower PMS7003** (UART) và cảm biến nhiệt/ẩm **Sensirion SHT40** (I2C).
+   * Hiển thị trạng thái màu cảnh báo theo chuẩn VN-AQI trên màn hình **LCD ST7789 IPS 2.0"** qua giao tiếp SPI tốc độ cao (20MHz).
+   * Thực thi mô hình **Standard MLP lượng tử hóa đối xứng INT8** (833 tham số) với chính sách **0-Byte Heap RAM**, khử hiện tượng phồng hạt do nồm ẩm miền Bắc ($RH > 90\%$).
+   * Vận hành chu kỳ tiết kiệm điện FSM 15 phút (Warmup 30s $\to$ Sample 10s $\to$ Infer $0.3\mu\text{s}$ $\to$ MQTT/LCD 5s $\to$ Deep Sleep 14m15s với dòng nghỉ $\approx 10\mu\text{A}$).
+2. **Tầng Trạm Thu Trung Tâm (Gateway AI - Raspberry Pi 5)**:
+   * Thu nhận luồng dữ liệu trạm đo qua MQTT.
+   * Lọc dữ liệu ngoại lai bằng thuật toán thống kê trượt **3-Sigma ($Z > 3$)** kết hợp ranh giới kỹ thuật quốc gia **QCVN 05:2023/BTNMT**.
+   * Dự báo xu hướng nồng độ bụi 24 giờ tiếp theo bằng mạng hồi quy **Vanilla GRU (32 hidden units)**.
+   * Nội suy bản đồ nhiệt ô nhiễm toàn trường bằng thuật toán khoảng cách nghịch đảo **IDW ($p=2.0$)**.
+   * Cung cấp Web Dashboard trực quan hóa qua FastAPI và Leaflet.
 
-    subgraph CentralPi["🔵 TẦNG TRUNG TÂM: RASPBERRY PI 5 GATEWAY V5.0"]
-        ESP_OUT --> DP["Dynamic Ingestion Buffer\nNhận diện N trạm thực tế (N ≥ 1)"]
-        DP --> UAI["HierarchicalCentralAI (42.952 params)\nDual-Head Multi-Task Batch"]
-        UAI --> FC["24h Horizon Forecast\n(+1h, +3h, +6h, +12h, +24h)"]
-        UAI --> AE["16D Sensor Anomaly Head\nMahalanobis Drift Detector"]
-        DP --> STE["Adaptive Spatial Heatmap Engine\nN=1 Plume | N=2 IDW | N≥3 Kriging"]
-        FC --> WM["Web Map V5.0 Multi-Horizon\n(Markers + 6 Frames 2D + Opacity Grid)"]
-        STE --> WM
-        AE --> WM
-    end
+---
 
-    subgraph MLOpsDocs["🧠 TẦNG OFFLINE: MLOPS & NGHIÊN CỨU"]
-        DATA["Dữ liệu đối chuẩn 5 năm Bắc Bộ\n(BAM-1020 / EPA AQS / 105k giờ)"] --> TRAIN["PyTorch 5-Fold CV Training"]
-        TRAIN --> QUANT["INT8 PTQ Zero-Drift"]
-        QUANT --> |"model_data.h (18.84 KB)"| TML
-        QUANT --> |"central_unified_ai.onnx"| CentralPi
-        DOCS["Báo cáo khoa học & BOM phần cứng"]
-    end
+## ⚖️ 2. PHÂN TÍCH ĐÁNH ĐỔI KỸ THUẬT: FULL ACADEMIC VS. PRODUCTION LITE
+
+Trong quá trình R&D, hệ thống đã được thử nghiệm và đo kiểm độc lập qua 2 phiên bản kiến trúc. Dựa trên số liệu thực nghiệm đo đạc thực tế, nhóm kỹ sư đã lựa chọn **Bản Lite** làm kiến trúc triển khai thực tế trên nhánh `main`:
+
+| Tiêu chí kỹ thuật | Bản Nghiên Cứu (`research/academic-full`) | Bản Thực Chiến (`main`) | Ý nghĩa kỹ thuật & Lựa chọn triển khai |
+| :--- | :--- | :--- | :--- |
+| **Mô hình Edge (ESP32-S3)** | **ResMLP** (Residual Skip-Connection, LayerNorm) | **Standard MLP (2 tầng ẩn)** (Dense 32 $\to$ Dense 16, ReLU) | Bản Lite dùng cấu trúc nén kinh điển, loại bỏ rủi ro overfit trên vector đặc trưng 8 chiều. |
+| **Số tham số Edge** | **19.297 tham số** | **833 tham số** | **Bản Lite nhẹ hơn 23 lần**, giảm triệt để gánh nặng tính toán trên MCU. |
+| **Bảng trọng số (`model_data.h`)** | ~19.2 KB Flash | **784 Bytes** (< 1 KB) | Bảng trọng số Lite nằm gọn trong L1 Cache của CPU ESP32. |
+| **Độ trễ suy luận Edge** | $10.60\ \mu\text{s}$ / lần (94.340 inferences/s) | **$0.30\ \mu\text{s}$ / lần** (**> 3.330.000 inferences/s**) | **Bản Lite nhanh hơn 35 lần**. |
+| **Độ chính xác Edge ($R^2$, RMSE)** | $R^2 \approx 0.88$, $\text{RMSE} \approx 8.9\ \mu\text{g/m}^3$ | **$R^2 = 0.8182$, $\text{RMSE} = 11.23\ \mu\text{g/m}^3$** | Sai số chênh lệch chỉ $\sim 2.3\ \mu\text{g/m}^3$, hoàn toàn chìm trong dải sai số nội tại ($\pm 10\ \mu\text{g/m}^3$) của cảm biến quang PMS7003. |
+| **Mô hình Gateway (Pi 5)** | **Dilated TCN + Bi-GRU + Dual Heads** (~43k params) | **Vanilla GRU 1 tầng** (**6.192 params**) | Giảm 7 lần số lượng tham số, tránh bẫy overfitting chuỗi thời gian ngắn. |
+| **Thời gian tính toán Gateway** | ~45 ms / frame (CPU load 12-15%) | **1.6 ms / frame** (CPU load **< 1%**) | **Bản Lite nhanh hơn 28 lần**, Gateway có thể mở rộng lên hàng trăm trạm đo. |
+| **Nội suy bản đồ nhiệt** | Ordinary Kriging (Bán phương sai Semivariogram) | **IDW ($p=2.0$, Nghịch đảo bình phương)** | Kriging dễ bị lỗi suy biến ma trận (Singular Matrix) khi số trạm đo ít ($N < 4$). IDW chạy ổn định $100\%$ không bao giờ crash. |
+| **Lọc dữ liệu dị thường** | 16D Deep Autoencoder + Mahalanobis Distance | **3-Sigma ($Z > 3$) + Ngưỡng QCVN 05:2023** | 3-Sigma mượt mà, bám sát quy chuẩn môi trường nhà nước, loại trừ báo động giả (False Alarms). |
+
+> 📌 **Lưu trữ mã nguồn**:
+> * Nhánh **`main`**: Bản triển khai thực tế tối ưu hóa (Production / Applied Edition).
+> * Nhánh **`research/academic-full`**: Bản nghiên cứu chuyên sâu phục vụ công bố bài báo khoa học (Academic Master Edition).
+
+---
+
+## 📁 3. CẤU TRÚC MÃ NGUỒN
+
+```
+E:\AQ
+├── esp/                         # Firmware C++ cho ESP32-S3
+│   ├── include/
+│   │   ├── config.h             # Cấu hình GPIO phần cứng, SPI LCD, I2C, Octal PSRAM lock
+│   │   ├── model_data.h         # Bảng trọng số INT8 Standard MLP Lite (784 Bytes)
+│   │   └── tinyml_edge_engine.h # Giao diện suy luận 0-Heap
+│   ├── src/
+│   │   ├── sensor_drivers.cpp   # Drivers đọc PMS7003 UART, Sensirion SHT40 I2C
+│   │   ├── st7789_lcd_driver.cpp# Driver màn hình màu ST7789 SPI 20MHz
+│   │   ├── power_scheduler.cpp  # FSM chu kỳ 15 phút và RTC Deep Sleep
+│   │   └── tinyml_edge_engine.cpp # Động cơ nhân ma trận số nguyên INT8
+│   └── tests/                   # Bộ test C++ Native (17/17 tests PASS)
+├── pi/                          # Trung tâm Gateway trên Raspberry Pi 5
+│   ├── central_engine.py        # Pipeline thu nhận, xử lý và lưu trữ dữ liệu trạm
+│   ├── forecasting_engine.py    # Mô hình Vanilla GRU 24 giờ
+│   ├── anomaly_engine.py        # Bộ phát hiện ngoại lai 3-Sigma + QCVN 05:2023
+│   ├── spatial_temporal_engine.py # Thuật toán nội suy không gian IDW (p=2.0)
+│   └── web_server.py            # API FastAPI và Web Dashboard Leaflet
+├── mlops/                       # Huấn luyện và lượng tử hóa mô hình
+│   ├── models/                  # Checkpoints PyTorch (.pt)
+│   └── scripts/
+│       ├── train_and_quantize_standard_mlp_lite.py # Huấn luyện và xuất header C
+│       └── train_lite_central_models.py           # Huấn luyện mô hình GRU trung tâm
+├── docs/                        # Tài liệu kỹ thuật & Cẩm nang bảo vệ
+│   └── SO_SANH_BAN_FULL_VA_LITE.md # Đối chiếu chi tiết & Bộ câu hỏi phản biện
+└── tests/                       # Test suite Python toàn diện (46/46 tests PASS)
 ```
 
 ---
 
-## 📂 2. Cấu Trúc Thư Mục Chuẩn Khoa Học (Monorepo Layout)
+## 🚀 4. HƯỚNG DẪN KHỞI CHẠY VÀ KIỂM THỬ
 
-```
-E:\AQ\
-├── esp/                         # 🟢 [EDGE NODE] Firmware & TinyML C++ cho Trạm Prototype ESP32-S3
-│   ├── include/                 # Header files: tinyml_edge_engine.h, model_data.h
-│   ├── src/                     # C++ Engine suy luận (0B Heap RAM, Stack < 1 KB)
-│   ├── tests/                   # Bộ test đơn vị & benchmark (test_main.cpp)
-│   └── README.md                # Thông số phần cứng & hướng dẫn nạp vi điều khiển
-│
-├── pi/                          # 🔵 [CENTRAL GATEWAY] Trạm xử lý AI Gateway Raspberry Pi 5 V5.0
-│   ├── __init__.py              # Python package export
-│   ├── config.py                # Cấu hình trạm Prototype (54 Triều Khúc) & danh mục tọa độ mở rộng
-│   ├── central_engine.py        # Central Orchestrator Pipeline (Dual-Branch 1-to-N Dynamic Ingestion)
-│   ├── spatial_temporal_engine.py # Động cơ nhiệt thích ứng (Plume / IDW / Kriging + Opacity Grid)
-│   ├── forecasting_engine.py    # Spatio-Temporal Forecaster (Dilated TCN + Bi-GRU)
-│   ├── anomaly_engine.py        # Deep Autoencoder phát hiện bất thường 16D / 48D
-│   ├── data_pipeline.py         # Pipeline tiền xử lý & sliding window dataset
-│   ├── simulator.py             # Mô phỏng vật lý khí quyển & đối kháng thử nghiệm
-│   ├── benchmark_pi5.py         # Đo đạc tải CPU, RAM, Latency trên Pi 5
-│   └── README.md                # Hướng dẫn vận hành Gateway
-│
-├── mlops/                       # 🧠 [AI PIPELINE] Huấn luyện ngoại tuyến & Dữ liệu NCKH
-│   ├── data/                    # Dữ liệu thực nghiệm đối chuẩn US EPA AQS, BAM-1020 & 5 năm Bắc Bộ
-│   ├── models/                  # central_unified_ai.pt (.onnx), model_data.h, scaler json
-│   ├── scripts/                 # Script huấn luyện, lượng tử hóa INT8, xuất bản đồ thị
-│   └── README.md                # Quy trình MLOps 5-Fold Cross Validation
-│
-├── docs/                        # 📚 [TÀI LIỆU & BÁO CÁO NCKH]
-│   ├── reports/                 # Báo cáo nghiệm thu hoàn chỉnh (.docx, .md)
-│   ├── hardware/                # Danh mục linh kiện chi tiết (BOM .xlsx)
-│   ├── figures/                 # Biểu đồ & sơ đồ kiến trúc 300 DPI
-│   ├── generators/              # Bộ công cụ sinh báo cáo tự động (build_*.py)
-│   └── README.md                # Mục lục tài liệu
-│
-└── README.md                    # Tài liệu tổng quan đề tài
+### 4.1. Kiểm thử Firmware C++
+```powershell
+Set-Location E:\AQ\esp\tests
+# Biên dịch và chạy bộ test FSM 15 phút, LCD ST7789, SHT40 (17/17 tests):
+g++ -std=c++17 -I../include test_firmware_15min_cycle.cpp ../src/sensor_drivers.cpp ../src/st7789_lcd_driver.cpp ../src/power_scheduler.cpp ../src/tinyml_edge_engine.cpp ../src/display_mqtt_hal.cpp -o test_firmware_15min_cycle.exe
+.\test_firmware_15min_cycle.exe
+
+# Biên dịch và chạy benchmark độ trễ TinyML 833 tham số:
+g++ -std=c++17 -I../include test_main.cpp ../src/tinyml_edge_engine.cpp -o test_edge_engine.exe
+.\test_edge_engine.exe
 ```
 
----
-
-## 🔬 3. Các Chỉ Số Kỹ Thuật Đạt Được (Prototype Benchmarks V5.0)
-
-| Tiêu Chí / Thành Phần | Mục Tiêu Học Thuật | Kết Quả Đạt Được | Ghi Chú Kỹ Thuật |
-|---|---|---|---|
-| **TinyML Bù Ẩm Biên (ESP32-S3)** | $R^2 \ge 0.92$, giảm $RMSE > 40\%$ | **$R^2 = 0.9784$**, giảm **$72.3\%$** sai số | MultiSensorResMLP 19k (INT8, 0B Heap) |
-| **Độ trễ suy luận biên** | $< 1.0\text{ ms}$ | **$0.010\text{ ms}$** (PC) / **$< 0.35\text{ ms}$** (ESP32-S3) | Chiếm $< 0.02\%$ CPU time vi điều khiển |
-| **Cấp phát bộ nhớ biên** | Heap: 0 Byte, Flash $< 100\text{ KB}$ | **0 Byte Heap**, Flash: **$18.84\text{ KB}$** | Nằm trọn trong L1 Data Cache của ESP32-S3 |
-| **Dự báo chuỗi thời gian (Pi 5)** | $R^2 > 0.85$ (+1h), $R^2 > 0.70$ (+3h) | **$R^2 = 0.9280$** (+1h), **$R^2 = 0.7125$** (+3h) | `HierarchicalCentralAI` (42.952 params) |
-| **Độ trễ toàn chuỗi Gateway** | $< 50.0\text{ ms}$ (chu kỳ 15 phút) | **$\approx 7.0 - 22.0\text{ ms}$** (trên Pi 5 8GB) | Tối ưu ma trận Kriging Pre-Caching ($<0.05\text{ms}$) |
-| **Tải tài nguyên Pi 5** | CPU $< 20\%$, RAM $< 1\text{ GB}$ | **CPU: $< 2.5\%$**, **RAM: $\approx 267\text{ MB}$** | Vận hành mát mẻ, tỷ lệ nhàn rỗi $> 99.99\%$ |
-| **Bản đồ Web (`web_map`)** | Đa chân trời, thích ứng $N=1 \rightarrow K$ | **6 mốc thời gian, $25 \times 25$, `opacity_grid`** | 1 trạm hiện đúng 1 pin, không sinh trạm ảo |
-| **Độ tin cậy kiểm thử tự động** | 100% Pass không hồi quy | **364 / 364 Tests PASSED** | Bảo toàn 100% 53 bài test đối kháng vật lý |
-
----
-
-## ⚡ 4. Hướng Dẫn Chạy Nhanh & Đo Kiểm
-
-### 1. Biên dịch & Kiểm thử C++ Engine trên ESP32-S3:
-```bash
-cd esp
-g++ -O3 -Wall -Iinclude tests/test_main.cpp src/tinyml_edge_engine.cpp -o tests/test_edge_engine.exe
-.\tests\test_edge_engine.exe
-```
-
-### 2. Chạy Đo Kiểm Toàn Bộ Test Suite Dự Án:
-```bash
+### 4.2. Kiểm thử Python Test Suite
+```powershell
+Set-Location E:\AQ
 pytest tests/ -v
 ```
 
-### 3. Khởi Chạy Web Dashboard & REST API Server V5.0 (Raspberry Pi 5):
-```bash
-python -m pi.web_server 8080
+### 4.3. Khởi chạy Web Server Gateway
+```powershell
+Set-Location E:\AQ
+python -m uvicorn pi.web_server:app --host 0.0.0.0 --port 8000 --reload
 ```
-Truy cập giao diện Web Dashboard tương tác tại: `http://localhost:8080/`
-- **Bản đồ nhiệt đa tầng**: Leaflet Canvas Overlay tại tọa độ trạm thực nghiệm 54 Triều Khúc (UTT - `lat: 20.9852, lon: 105.7972`).
-- **6 mốc dự báo không gian**: `current`, `+1h`, `+3h`, `+6h`, `+12h`, `+24h` kèm ma trận suy giảm độ tin cậy `opacity_grid`.
-- **Dự báo chuỗi thời gian 24 giờ**: Chart.js trực quan hóa nồng độ PM2.5 và dải tin cậy $P_{10} - P_{90}$.
-- **Hệ thống REST API siêu nhẹ (Python stdlib, RAM < 15MB, Latency < 5ms)**:
-  - `GET /api/status`: Trạng thái hệ thống, uptime, thông tin trạm thực nghiệm.
-  - `GET /api/telemetry`: Thông số cảm biến thời gian thực (PM2.5, VN-AQI, Temp, RH, CO2, VOC).
-  - `GET /api/map`: Dữ liệu phân bố không gian và ma trận 25x25 cho 6 chân trời.
-  - `GET /api/forecast`: Dự báo chuỗi thời gian 24 giờ tới.
-  - `POST /api/trigger_cycle`: Kích hoạt chu kỳ tính toán mới phục vụ demo nghiệm thu.
+Truy cập giao diện Web thời gian thực tại: `http://localhost:8000`
 
-### 4. Chạy Đo Kiểm Hiệu Năng Thực Tế Trên Raspberry Pi 5 Gateway:
-```bash
-python -m pi.benchmark_pi5
-```
+---
 
-### 5. Tái Tạo Báo Cáo Khoa Học Word (Kèm Biểu Đồ 300 DPI):
-```bash
-python docs/generators/build_clean_accessible_report.py
-```
-Văn bản báo cáo nghiệm thu hoàn chỉnh sẽ được tạo tại [`docs/reports/Bao_Cao_Ban_Dau_NCKH_Edge_AI.docx`](file:///e:/AQ/docs/reports/Bao_Cao_Ban_Dau_NCKH_Edge_AI.docx).
+## 📜 5. BẢN QUYỀN VÀ TRÍCH DẪN
+Dự án Nghiên cứu Khoa học Trường Đại học Công nghệ Giao thông Vận tải (UTT).  
+Tác giả: PhelanDev & Nhóm NCKH Hệ thống Thông minh AIoT.

@@ -476,44 +476,14 @@ def build_adaptive_spatial_heatmap(
             grid_pm25[:, nearest_cells[1][0], nearest_cells[1][1]] = v1.astype(np.float32)
 
     else:
-        mode = "multistation_ordinary_kriging"
-        cache_key = (int(N), int(grid_size), round(float(coords_u[0, 0]), 1), round(float(coords_u[0, 1]), 1))
-        if cache_key in _KRIGING_WEIGHTS_CACHE:
-            weights = _KRIGING_WEIGHTS_CACHE[cache_key]
-        else:
-            c0_krig = float(nugget)
-            a_krig = max(100.0, float(range_m))
-            if sill is not None:
-                c_krig = float(sill)
-            else:
-                var_v = float(np.var(vals))
-                c_krig = max(10.0, var_v if var_v > 0.0 else 25.0)
-    
-            diff_st = coords_u[:, None, :] - coords_u[None, :, :]
-            dist_st = np.sqrt(np.sum(diff_st ** 2, axis=-1))
-            gamma_st = c0_krig + c_krig * (1.0 - np.exp(-dist_st / a_krig))
-            np.fill_diagonal(gamma_st, 0.0)
-    
-            K = np.ones((N + 1, N + 1), dtype=np.float64)
-            K[:N, :N] = gamma_st
-            K[N, N] = 0.0
-            K_reg = K + 1e-9 * np.eye(N + 1)
-    
-            K_inv = np.linalg.pinv(K_reg)
-    
-            P = grid_size * grid_size
-            pts = np.column_stack([mesh_x.ravel(), mesh_y.ravel()])
-            diff_pts = coords_u[:, None, :] - pts[None, :, :]
-            dist_pts = np.sqrt(np.sum(diff_pts ** 2, axis=-1))
-            gamma_pts = c0_krig + c_krig * (1.0 - np.exp(-dist_pts / a_krig))
-            gamma_pts[dist_pts < 1e-6] = 0.0
-    
-            G = np.ones((N + 1, P), dtype=np.float64)
-            G[:N, :] = gamma_pts
-    
-            Lambda = K_inv @ G
-            weights = Lambda[:N, :]  # shape (N, P)
-            _KRIGING_WEIGHTS_CACHE[cache_key] = weights
+        # Standard IDW (Inverse Distance Weighting p=2.0) cho bản Lite
+        mode = "multistation_idw"
+        P = grid_size * grid_size
+        pts = np.column_stack([mesh_x.ravel(), mesh_y.ravel()])
+        diff_pts = coords_u[:, None, :] - pts[None, :, :]
+        dist_pts = np.sqrt(np.sum(diff_pts ** 2, axis=-1))
+        inv_dist = 1.0 / (dist_pts ** 2 + 100.0)
+        weights = inv_dist / (np.sum(inv_dist, axis=0, keepdims=True) + 1e-12)  # shape (N, P)
 
         if not is_multi_step:
             z_interp = vals @ weights
@@ -737,48 +707,19 @@ class SpatialTemporalEngine:
         M = grid_resolution * grid_resolution
         points = np.column_stack([mesh_x.ravel(), mesh_y.ravel()])
 
-        c0 = float(nugget)
-        if sill is not None:
-            c = float(sill)
-        else:
-            var_z = float(np.var(z))
-            c = max(10.0, var_z if var_z > 0.0 else 25.0)
-        a = max(100.0, float(range_m))
+        # Standard IDW (Inverse Distance Weighting p=2.0) cho Bản Sinh Viên
+        diff_grid = coords[:, np.newaxis, :] - points[np.newaxis, :, :]  # (N, M, 2)
+        dist_grid = np.sqrt(np.sum(diff_grid**2, axis=-1))  # (N, M)
+        eps = 100.0  # Tránh chia cho 0 khi điểm lưới trùng đúng tọa độ trạm
+        inv_d2 = 1.0 / (dist_grid**2 + eps)
+        weights = inv_d2 / (np.sum(inv_d2, axis=0, keepdims=True) + 1e-12)  # (N, M)
 
-        diff_stations = coords[:, np.newaxis, :] - coords[np.newaxis, :, :]
-        dist_stations = np.sqrt(np.sum(diff_stations**2, axis=-1))
-
-        gamma_stations = c0 + c * (1.0 - np.exp(-dist_stations / a))
-        np.fill_diagonal(gamma_stations, 0.0)
-
-        K = np.ones((N + 1, N + 1), dtype=np.float64)
-        K[:N, :N] = gamma_stations
-        K[N, N] = 0.0
-        K_reg = K + 1e-9 * np.eye(N + 1)
-
-        diff_grid = coords[:, np.newaxis, :] - points[np.newaxis, :, :]
-        dist_grid = np.sqrt(np.sum(diff_grid**2, axis=-1))
-
-        gamma_grid = c0 + c * (1.0 - np.exp(-dist_grid / a))
-        gamma_grid[dist_grid < 1e-6] = 0.0
-
-        G = np.ones((N + 1, M), dtype=np.float64)
-        G[:N, :] = gamma_grid
-
-        try:
-            Lambda = np.linalg.solve(K_reg, G)
-        except np.linalg.LinAlgError:
-            Lambda = np.linalg.pinv(K_reg) @ G
-
-        weights = Lambda[:N, :]
-        z_interp = z @ weights
+        z_interp = z @ weights  # (M,)
         z_interp = np.maximum(0.0, z_interp)
 
-        kriging_var = np.sum(Lambda * G, axis=0)
-        kriging_var = np.maximum(0.0, kriging_var)
-
+        min_dist = np.min(dist_grid, axis=0)
+        variance_map = min_dist.reshape((grid_resolution, grid_resolution))
         heatmap = z_interp.reshape((grid_resolution, grid_resolution))
-        variance_map = kriging_var.reshape((grid_resolution, grid_resolution))
 
         exec_ms = (time.perf_counter() - t_start) * 1000.0
 
