@@ -579,12 +579,18 @@ static void test_100_cycles_simulation_and_duty_timing(void) {
 
         if (!online) {
             assert(res.telemetry_sent == false);
+            assert(res.offline_buffered_count == (c - 29));
+            assert(res.offline_backfilled_count == 0);
         } else if (c == 35) {
-            // Reconnection: automatically popped and published queued offline packets
+            // Reconnection: automatically popped and published queued offline packets (Store-and-Forward)
             assert(res.telemetry_sent == true);
+            assert(res.offline_backfilled_count == 5);
+            assert(res.offline_buffered_count == 0);
             assert(offline_ringbuf_is_empty() == true);
         } else {
             assert(res.telemetry_sent == true);
+            assert(res.offline_buffered_count == 0);
+            assert(res.offline_backfilled_count == 0);
         }
 
         // Validate exact timing breakdown: 30s + 2s + 868s = 900s
@@ -891,6 +897,68 @@ static void test_st7789_lifecycle_and_dashboard_rendering(void) {
     printf("  -> PASS: ST7789 initialization, dashboard rendering, and sleep power-down verified.\n");
 }
 
+
+// ============================================================================
+// TEST 18: Store-and-Forward Network Outage Resilience & Overwrite Policy
+// ============================================================================
+static void test_store_and_forward_advanced_outage_resilience(void) {
+    printf("[TEST 18] Testing Store-and-Forward network outage resilience & overwrite policy...\n");
+
+    offline_ringbuf_clear();
+    assert(offline_ringbuf_count() == 0);
+    assert(offline_ringbuf_dropped_count() == 0);
+
+    // 1. Fill ring buffer to capacity (256 packets)
+    size_t cap = offline_ringbuf_capacity();
+    for (size_t i = 0; i < cap; ++i) {
+        EdgeTelemetryPacket pkt;
+        memset(&pkt, 0, sizeof(pkt));
+        pkt.timestamp = (uint32_t)(1700000000 + i * 900);
+        pkt.pm25_calibrated = (float)(10.0f + (i % 50));
+        pkt.aqi = 25;
+        pkt.flags = 0x00;
+        bool ok = offline_ringbuf_push_overwrite(&pkt);
+        assert(ok == true);
+    }
+    assert(offline_ringbuf_count() == cap);
+    assert(offline_ringbuf_is_full() == true);
+    assert(offline_ringbuf_dropped_count() == 0);
+
+    // 2. Push 10 additional packets when full -> Must drop oldest 10 packets (FIFO)
+    for (size_t i = 0; i < 10; ++i) {
+        EdgeTelemetryPacket extra_pkt;
+        memset(&extra_pkt, 0, sizeof(extra_pkt));
+        extra_pkt.timestamp = (uint32_t)(1700000000 + (cap + i) * 900);
+        extra_pkt.pm25_calibrated = 99.0f;
+        extra_pkt.aqi = 150;
+        extra_pkt.flags = 0x00;
+        bool ok = offline_ringbuf_push_overwrite(&extra_pkt);
+        assert(ok == true);
+    }
+    assert(offline_ringbuf_count() == cap);
+    assert(offline_ringbuf_dropped_count() == 10);
+
+    // 3. Pop first packet -> Must be packet #10 (timestamps 0..9 were dropped)
+    EdgeTelemetryPacket popped;
+    bool pop_ok = offline_ringbuf_pop(&popped);
+    assert(pop_ok == true);
+    assert(popped.timestamp == (uint32_t)(1700000000 + 10 * 900));
+
+    // 4. Verify JSON serialization with TELEMETRY_FLAG_BACKFILL
+    popped.flags |= TELEMETRY_FLAG_BACKFILL;
+    char json_buf[512];
+    int json_len = mqtt_format_telemetry_json(&popped, json_buf, sizeof(json_buf));
+    assert(json_len > 0);
+    assert(strstr(json_buf, "\"is_backfill\":true") != NULL);
+
+    // Clean up
+    offline_ringbuf_clear();
+    assert(offline_ringbuf_count() == 0);
+    assert(offline_ringbuf_dropped_count() == 0);
+
+    printf("  -> PASS: Store-and-Forward overwrite FIFO and JSON backfill flag verified.\n");
+}
+
 int main(void) {
     printf("====================================================================\n");
     printf("   ESP32-S3 FIRMWARE & 15-MIN DUTY CYCLE TEST SUITE (TASKS 1 & 2)  \n");
@@ -916,7 +984,8 @@ int main(void) {
 
     test_st7789_aqi_colors();
     test_st7789_lifecycle_and_dashboard_rendering();
+    test_store_and_forward_advanced_outage_resilience();
 
-    printf("\n>>> ALL 17 TESTS (INCLUDING ST7789 LCD SPI & SHT40 I2C) PASSED SUCCESSFULLY! <<<\n");
+    printf("\n>>> ALL 18 TESTS (INCLUDING ST7789 LCD SPI & SHT40 I2C) PASSED SUCCESSFULLY! <<<\n");
     return 0;
 }

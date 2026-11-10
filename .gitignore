@@ -6,7 +6,6 @@ __pycache__/
 *.pyo
 
 # Testing & Coverage
-tests/
 .pytest_cache/
 .coverage
 .coverage.*
@@ -14,7 +13,6 @@ htmlcov/
 nosetests.xml
 coverage.xml
 *.cover
-pytest.ini
 
 # Plans & Roadmaps
 plans/
@@ -57,7 +55,4 @@ docs/figures/test_*.png
 external_refs/
 
 .superpowers/
-
-# Local dependencies & configuration
-requirements.txt
 

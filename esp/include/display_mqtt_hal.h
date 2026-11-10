@@ -47,6 +47,13 @@ static_assert(sizeof(EdgeTelemetryPacket) == 32, "EdgeTelemetryPacket must be ex
 #endif
 
 // ============================================================================
+// Telemetry Packet Bitwise Flags (Connectivity & Store-and-Forward Status)
+// ============================================================================
+#define TELEMETRY_FLAG_REALTIME        (1 << 0) // 0x01: Gói tin gửi trực tiếp thời gian thực
+#define TELEMETRY_FLAG_BACKFILL        (1 << 1) // 0x02: Gói tin gửi bù sau khi mạng phục hồi (Store-and-Forward)
+#define TELEMETRY_FLAG_OVERFLOW_DROP   (1 << 2) // 0x04: Từng bị tràn bộ đệm (đã loại bỏ mẫu cũ nhất để ưu tiên mẫu mới)
+
+// ============================================================================
 // VN-AQI Calculation (QCVN 05:2023 / Decision 1459/QD-TCMT)
 // ============================================================================
 
@@ -117,6 +124,16 @@ int mqtt_format_telemetry_json(const EdgeTelemetryPacket *pkt, char *out_json, s
 bool offline_ringbuf_push(const EdgeTelemetryPacket *pkt);
 
 /**
+ * @brief Pushes a 32-byte telemetry packet into the static offline ring buffer.
+ * If buffer is full, automatically drops the oldest sample (FIFO circular overwrite)
+ * and increments dropped counter to maintain newest time series history.
+ *
+ * @param pkt Packet to insert.
+ * @return true if pushed successfully (either free slot or overwrite); false if pkt is NULL.
+ */
+bool offline_ringbuf_push_overwrite(const EdgeTelemetryPacket *pkt);
+
+/**
  * @brief Pops the oldest 32-byte telemetry packet from the static offline ring buffer (FIFO).
  *
  * @param out_pkt Destination packet buffer.
@@ -148,6 +165,16 @@ bool offline_ringbuf_is_full(void);
  * @brief Clears all entries in the ring buffer.
  */
 void offline_ringbuf_clear(void);
+
+/**
+ * @brief Returns total count of packets dropped due to buffer overflow since last reset.
+ */
+size_t offline_ringbuf_dropped_count(void);
+
+/**
+ * @brief Resets the dropped packets counter to zero.
+ */
+void offline_ringbuf_reset_dropped(void);
 
 #ifdef __cplusplus
 }

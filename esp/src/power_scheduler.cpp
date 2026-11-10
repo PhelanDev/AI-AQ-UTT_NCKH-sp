@@ -137,22 +137,29 @@ EdgeCycleResult edge_execute_15min_duty_cycle(const RawSensorSample *raw_sample,
     pkt.co2_ppm = raw_sample->co2_ppm;
     pkt.aqi = (uint16_t)res.vn_aqi;
     pkt.anomaly_code = (uint8_t)res.anomaly_code;
-    pkt.flags = mqtt_connected ? 0x01 : 0x00;
+    pkt.flags = mqtt_connected ? TELEMETRY_FLAG_REALTIME : 0x00;
 
     if (mqtt_connected) {
         char json_buf[512];
         int json_len = mqtt_format_telemetry_json(&pkt, json_buf, sizeof(json_buf));
         res.telemetry_sent = (json_len > 0);
 
-        // Opportunistically drain any buffered packets queued during network outages
+        // Opportunistically drain any buffered packets queued during network outages (Store-and-Forward)
+        res.offline_backfilled_count = 0;
         EdgeTelemetryPacket queued_pkt;
         while (offline_ringbuf_pop(&queued_pkt)) {
-            // In live deployment, queued_pkt would be published to MQTT broker
+            queued_pkt.flags |= TELEMETRY_FLAG_BACKFILL;
+            char backfill_json[512];
+            mqtt_format_telemetry_json(&queued_pkt, backfill_json, sizeof(backfill_json));
+            res.offline_backfilled_count++;
         }
+        res.offline_buffered_count = (uint16_t)offline_ringbuf_count();
     } else {
         res.telemetry_sent = false;
         // Network offline: Enqueue into static 32-byte ring buffer (Zero Dynamic Allocation)
-        offline_ringbuf_push(&pkt);
+        offline_ringbuf_push_overwrite(&pkt);
+        res.offline_buffered_count = (uint16_t)offline_ringbuf_count();
+        res.offline_backfilled_count = 0;
     }
 
     // ========================================================================
@@ -201,6 +208,7 @@ bool burst_accumulator_push(SensorBurstAccumulator *acc, const RawSensorSample *
         if (acc->count >= SENSOR_BURST_SAMPLE_COUNT) {
             acc->is_full = true;
         }
+
     }
     return acc->is_full;
 }
@@ -213,6 +221,7 @@ static void sort_floats_insertion(float *arr, size_t n) {
             arr[j + 1] = arr[j];
             j--;
         }
+
         arr[j + 1] = key;
     }
 }

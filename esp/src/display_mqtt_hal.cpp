@@ -104,6 +104,8 @@ int mqtt_format_telemetry_json(const EdgeTelemetryPacket *pkt, char *out_json, s
         return -1;
     }
 
+    bool is_backfill = (pkt->flags & TELEMETRY_FLAG_BACKFILL) != 0;
+
     int written = snprintf(out_json, max_len,
         "{\"station_id\":\"esp32s3_node_01\","
         "\"timestamp\":%u,"
@@ -115,7 +117,8 @@ int mqtt_format_telemetry_json(const EdgeTelemetryPacket *pkt, char *out_json, s
         "\"co2_ppm\":%.1f,"
         "\"aqi\":%u,"
         "\"anomaly_code\":%u,"
-        "\"flags\":%u}",
+        "\"flags\":%u,"
+        "\"is_backfill\":%s}",
         (unsigned int)pkt->timestamp,
         pkt->pm1_raw,
         pkt->pm2_raw,
@@ -125,7 +128,8 @@ int mqtt_format_telemetry_json(const EdgeTelemetryPacket *pkt, char *out_json, s
         pkt->co2_ppm,
         (unsigned int)pkt->aqi,
         (unsigned int)pkt->anomaly_code,
-        (unsigned int)pkt->flags
+        (unsigned int)pkt->flags,
+        is_backfill ? "true" : "false"
     );
 
     if (written < 0 || (size_t)written >= max_len) {
@@ -143,12 +147,34 @@ static EdgeTelemetryPacket s_ringbuf[OFFLINE_RINGBUF_CAPACITY];
 static size_t s_head = 0;
 static size_t s_tail = 0;
 static size_t s_count = 0;
+static size_t s_dropped_count = 0;
 
 bool offline_ringbuf_push(const EdgeTelemetryPacket *pkt) {
     if (!pkt || s_count >= OFFLINE_RINGBUF_CAPACITY) {
         return false;
     }
     s_ringbuf[s_head] = *pkt;
+    s_head = (s_head + 1) % OFFLINE_RINGBUF_CAPACITY;
+    s_count++;
+    return true;
+}
+
+bool offline_ringbuf_push_overwrite(const EdgeTelemetryPacket *pkt) {
+    if (!pkt) {
+        return false;
+    }
+
+    if (s_count >= OFFLINE_RINGBUF_CAPACITY) {
+        // Buffer full: drop oldest sample to maintain latest telemetry stream
+        s_tail = (s_tail + 1) % OFFLINE_RINGBUF_CAPACITY;
+        s_dropped_count++;
+        s_count--;
+    }
+
+    s_ringbuf[s_head] = *pkt;
+    if (s_dropped_count > 0) {
+        s_ringbuf[s_head].flags |= TELEMETRY_FLAG_OVERFLOW_DROP;
+    }
     s_head = (s_head + 1) % OFFLINE_RINGBUF_CAPACITY;
     s_count++;
     return true;
@@ -184,4 +210,13 @@ void offline_ringbuf_clear(void) {
     s_head = 0;
     s_tail = 0;
     s_count = 0;
+    s_dropped_count = 0;
+}
+
+size_t offline_ringbuf_dropped_count(void) {
+    return s_dropped_count;
+}
+
+void offline_ringbuf_reset_dropped(void) {
+    s_dropped_count = 0;
 }

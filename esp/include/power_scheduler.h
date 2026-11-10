@@ -85,6 +85,8 @@ typedef struct {
     bool entered_deep_sleep;            // Whether system configured and entered deep sleep
     uint32_t deep_sleep_duration_sec;   // Programmed deep sleep duration (nominally 868s)
     bool pms_set_pin_level;             // Final logic state of PIN_PMS_SET (GPIO6)
+    uint16_t offline_buffered_count;    // Number of packets currently buffered in offline ring buffer
+    uint16_t offline_backfilled_count;  // Number of buffered packets flushed/backfilled upon reconnection
 } EdgeCycleResult;
 
 /**
