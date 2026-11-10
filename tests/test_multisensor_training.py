@@ -79,7 +79,7 @@ def test_forecaster_convergence():
 
     # Kiem tra numerical parity giua PyTorch va ONNX
     from pi.forecasting_engine import DilatedTCNBiGRUForecaster
-    model = DilatedTCNBiGRUForecaster(in_features=14, tcn_channels=32, gru_hidden=64, out_steps=24, out_targets=2)
+    model = DilatedTCNBiGRUForecaster(in_features=14, tcn_channels=32, gru_hidden=32, out_steps=24, out_targets=2)
     model.load_state_dict(torch.load(pt_path, map_location="cpu", weights_only=True))
     model.eval()
 

@@ -134,7 +134,7 @@ def train_forecaster(
 
     device = torch.device("cpu")
     model = DilatedTCNBiGRUForecaster(
-        in_features=14, tcn_channels=32, gru_hidden=64, out_steps=24, out_targets=2
+        in_features=14, tcn_channels=32, gru_hidden=32, out_steps=24, out_targets=2
     ).to(device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

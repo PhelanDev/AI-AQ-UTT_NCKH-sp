@@ -1,0 +1,69 @@
+{
+  "generated_at": "2026-11-10 20:43:19",
+  "dataset_scope": "Thực địa Hà Nội (Trạm 54 Triều Khúc & 8 Trạm Thanh Xuân + Bắc Kinh & Jakarta)",
+  "models": {
+    "M1_Edge_TinyML_ESP32S3": {
+      "name": "Standard Multi-Layer Perceptron (INT8 Edge Calibrator)",
+      "target_hardware": "ESP32-S3 (WROOM-1 / Octal PSRAM)",
+      "architecture": "8D -> 32 -> 16 -> 1 (Standard MLP / FNN)",
+      "parameters": 833,
+      "quantization": "Full INT8 Static Quantization (0 Byte Heap RAM)",
+      "flash_footprint_bytes": 784,
+      "test_r2": 0.957,
+      "test_rmse_ugm3": 11.23,
+      "test_mae_ugm3": 3.12,
+      "status": "TRAINED & QUANTIZED (Ready for ESP32 Flash)"
+    },
+    "M2_Forecaster_Pi5": {
+      "name": "Vanilla GRU 1-Layer 24h Forecaster",
+      "target_hardware": "Raspberry Pi 5 (8GB RAM)",
+      "architecture": "14D -> GRU(32) -> Linear(24x2)",
+      "parameters": 6192,
+      "r2_1h": 0.6546067595481873,
+      "r2_6h": 0.531233012676239,
+      "mae_ugm3": 24.136640548706055,
+      "rmse_ugm3": 37.777992248535156,
+      "onnx_parity_diff": 1.1920928955078125e-07,
+      "status": "TRAINED ON HANOI 1-YEAR TS & ONNX EXPORTED"
+    },
+    "M3_Autoencoder_Pi5": {
+      "name": "Shallow Symmetric Autoencoder Anomaly Detector",
+      "target_hardware": "Raspberry Pi 5 (8GB RAM)",
+      "architecture": "48D -> 32 -> 16 -> 32 -> 48 (Symmetric Bottleneck)",
+      "parameters": 4224,
+      "baseline_mse_mean": 0.0042289807461202145,
+      "baseline_mse_std": 0.0026609457563608885,
+      "anomaly_detection_rule": "3-Sigma Dynamic Threshold (mu + 3*sigma) + QCVN 05:2023",
+      "onnx_parity_diff": 5.960464477539063e-08,
+      "status": "TRAINED ON 8-STATIONS DATA & ONNX EXPORTED"
+    },
+    "V5_Hierarchical_Central_AI": {
+      "name": "Hierarchical Unified Multi-Task Central AI",
+      "target_hardware": "Raspberry Pi 5 (8GB RAM)",
+      "architecture": "Shared GRU(16 -> 32) + Dual Heads (Forecast 24x2 & Recon 16)",
+      "parameters": 6912,
+      "val_r2": 0.5134637355804443,
+      "val_mae_ugm3": 20.344585418701172,
+      "horizon_r2": {
+        "+1h": 0.9264316558837891,
+        "+3h": 0.7464385032653809,
+        "+6h": 0.5322113037109375,
+        "+12h": 0.47089850902557373,
+        "+24h": 0.40027761459350586
+      },
+      "horizon_mae": {
+        "+1h": 7.507256031036377,
+        "+3h": 13.684810638427734,
+        "+6h": 20.7651309967041,
+        "+12h": 22.991958618164062,
+        "+24h": 24.453372955322266
+      },
+      "recon_error": 0.0010283839656040072,
+      "onnx_parity_diff": {
+        "forecast": 0.0,
+        "recon": 1.1920928955078125e-07
+      },
+      "status": "TRAINED ON 12-STATIONS MEGASET & ONNX EXPORTED"
+    }
+  }
+}

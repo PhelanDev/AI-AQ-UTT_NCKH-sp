@@ -229,7 +229,7 @@ class CentralAIEngine:
                 self.ae_max_48 = np.array(ae_meta["max_48"], dtype=np.float32)
             if "baseline_mse_mean" in ae_meta and "baseline_mse_std" in ae_meta:
                 baseline_mean = float(ae_meta["baseline_mse_mean"])
-                baseline_std = max(float(ae_meta["baseline_mse_std"]), 0.001)
+                baseline_std = min(max(float(ae_meta["baseline_mse_std"]), 0.001), 0.0019)
 
         self.anomaly_detector.mu_ema = baseline_mean
         self.anomaly_detector.var_ema = baseline_std ** 2
