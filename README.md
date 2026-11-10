@@ -110,4 +110,4 @@ Truy cập giao diện Web thời gian thực tại: `http://localhost:8000`
 
 ## 📜 5. BẢN QUYỀN VÀ TRÍCH DẪN
 Dự án Nghiên cứu Khoa học Trường Đại học Công nghệ Giao thông Vận tải (UTT).  
-Tác giả: PhelanDev & Nhóm NCKH Hệ thống Thông minh AIoT.
+Tác giả: PhelanDev.
