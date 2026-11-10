@@ -74,6 +74,18 @@ bool senseair_s8_parse_response(const uint8_t *buf, size_t len, float *out_co2_p
  */
 size_t senseair_s8_build_read_co2_cmd(uint8_t *out_cmd, size_t max_len);
 
+// ============================================================================
+// Sensirion SHT40 High-Precision Temperature & Humidity Driver (I2C)
+// ============================================================================
+
+#define SHT40_I2C_ADDR                   0x44
+#define SHT40_CMD_MEASURE_HIGH_PRECISION 0xFD
+#define SHT40_RESPONSE_SIZE              6
+
+uint8_t sht40_compute_crc8(const uint8_t *data, size_t len);
+bool sht40_parse_response(const uint8_t *buf, size_t len, float *out_temp_c, float *out_rh_percent);
+size_t sht40_build_measure_cmd(uint8_t *out_cmd, size_t max_len);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,4 +1,5 @@
 #include "power_scheduler.h"
+#include "st7789_lcd_driver.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -122,6 +123,7 @@ EdgeCycleResult edge_execute_15min_duty_cycle(const RawSensorSample *raw_sample,
 
     char lcd_buffer[256];
     lcd_format_screen_buffer(&display_payload, lcd_buffer, sizeof(lcd_buffer));
+    st7789_render_dashboard(&display_payload);
     res.lcd_updated = true;
 
     // 2. Prepare 32-byte Telemetry Packet
@@ -159,6 +161,7 @@ EdgeCycleResult edge_execute_15min_duty_cycle(const RawSensorSample *raw_sample,
     s_current_fsm_state = EDGE_STATE_PREPARE_SLEEP;
     res.pms_set_pin_level = false; // Turn OFF fan and laser
     res.deep_sleep_duration_sec = ESP_DEEP_SLEEP_SEC; // 868 seconds
+    st7789_enter_sleep();
 
 #if defined(ESP_PLATFORM) || defined(ARDUINO_ARCH_ESP32)
     gpio_set_level((gpio_num_t)PIN_PMS_SET, 0);

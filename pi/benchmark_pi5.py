@@ -167,7 +167,7 @@ def run_pi5_benchmark(
 def run_full_pi5_benchmark(
     forecaster_onnx: str = "mlops/models/central_forecaster.onnx",
     autoencoder_onnx: str = "mlops/models/central_autoencoder.onnx",
-    output_report_path: str = "pi/pi5_benchmark_results.json",
+    output_report_path: str = "pi/benchmarks/pi5_benchmark_results.json",
 ) -> Dict[str, Union[Dict[str, float], bool]]:
     forecaster_onnx = _resolve_model_path(forecaster_onnx)
     autoencoder_onnx = _resolve_model_path(autoencoder_onnx)

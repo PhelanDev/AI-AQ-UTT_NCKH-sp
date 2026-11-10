@@ -49,6 +49,9 @@ extern "C" {
 #define ESP_ACTIVE_PROCESS_SEC    2  // 2s measurement, TinyML inference, LCD & MQTT
 #define ESP_DEEP_SLEEP_SEC      868  // 14m 28s deep sleep (RTC Timer wakeup)
 
+// Display Operating Mode (1 = Always-On 24/7 Display for 5V Mains/Demo; 0 = Battery Sleep)
+#define CONFIG_LCD_ALWAYS_ON    1
+
 #ifdef __cplusplus
 }
 

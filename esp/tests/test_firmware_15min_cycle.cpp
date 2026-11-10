@@ -744,6 +744,153 @@ static void test_burst_duty_cycle_integration(void) {
            res.pm25_calibrated, res.vn_aqi, res.deep_sleep_duration_sec);
 }
 
+// ============================================================================
+// TEST 14: Sensirion SHT40 CRC-8 & Command Builder
+// ============================================================================
+static void test_sht40_crc8_and_command(void) {
+    printf("[TEST 14] Testing Sensirion SHT40 CRC-8 & command builder...\n");
+
+    // Standard Sensirion test vector: {0xBE, 0xEF} -> CRC-8 = 0x92
+    const uint8_t test_vec[2] = {0xBE, 0xEF};
+    uint8_t crc = sht40_compute_crc8(test_vec, 2);
+    assert(crc == 0x92);
+
+    // Build High-Precision measurement command (0xFD)
+    uint8_t cmd_buf[4];
+    size_t cmd_len = sht40_build_measure_cmd(cmd_buf, sizeof(cmd_buf));
+    assert(cmd_len == 1);
+    assert(cmd_buf[0] == 0xFD);
+
+    // Invalid buffers
+    assert(sht40_build_measure_cmd(NULL, 4) == 0);
+    assert(sht40_build_measure_cmd(cmd_buf, 0) == 0);
+    assert(sht40_compute_crc8(NULL, 2) == 0);
+
+    printf("  -> PASS: SHT40 CRC-8 matches Sensirion test vector (0x92) & command is 0xFD.\n");
+}
+
+// ============================================================================
+// TEST 15: Sensirion SHT40 6-Byte Frame Parser & Physical Conversion
+// ============================================================================
+static void test_sht40_response_parser(void) {
+    printf("[TEST 15] Testing Sensirion SHT40 response frame parser...\n");
+
+    // Synthesize standard SHT40 6-byte response:
+    // T_ticks = 26400 (0x67, 0x20) -> T = -45 + 175 * (26400 / 65535) = 25.49668 deg C
+    // RH_ticks = 45000 (0xAF, 0xC8) -> RH = -6 + 125 * (45000 / 65535) = 79.83215 %
+    uint8_t frame[6];
+    frame[0] = 0x67;
+    frame[1] = 0x20;
+    frame[2] = sht40_compute_crc8(&frame[0], 2); // T_CRC
+
+    frame[3] = 0xAF;
+    frame[4] = 0xC8;
+    frame[5] = sht40_compute_crc8(&frame[3], 2); // RH_CRC
+
+    float temp_c = 0.0f;
+    float rh_percent = 0.0f;
+
+    bool parse_ok = sht40_parse_response(frame, 6, &temp_c, &rh_percent);
+    assert(parse_ok == true);
+    assert(fabsf(temp_c - 25.49668f) < 1e-3f);
+    assert(fabsf(rh_percent - 79.83215f) < 1e-3f);
+
+    // Corrupt T CRC -> must reject
+    frame[2] ^= 0x01;
+    assert(sht40_parse_response(frame, 6, &temp_c, &rh_percent) == false);
+    frame[2] ^= 0x01; // Restore
+
+    // Corrupt RH CRC -> must reject
+    frame[5] ^= 0x80;
+    assert(sht40_parse_response(frame, 6, &temp_c, &rh_percent) == false);
+    frame[5] ^= 0x80; // Restore
+
+    // Length check (< 6 bytes)
+    assert(sht40_parse_response(frame, 5, &temp_c, &rh_percent) == false);
+    assert(sht40_parse_response(NULL, 6, &temp_c, &rh_percent) == false);
+
+    printf("  -> PASS: SHT40 6-byte parsing verified with CRC verification (T=%.2f C, RH=%.2f%%).\n",
+           temp_c, rh_percent);
+}
+
+#include "st7789_lcd_driver.h"
+
+// ============================================================================
+// TEST 16: ST7789 RGB565 Palette & VN-AQI Mapping
+// ============================================================================
+static void test_st7789_aqi_colors(void) {
+    printf("[TEST 16] Testing ST7789 RGB565 palette & VN-AQI mapping...\n");
+
+    assert(st7789_get_aqi_color_rgb565(0) == RGB565_AQI_GOOD);
+    assert(st7789_get_aqi_color_rgb565(25) == RGB565_AQI_GOOD);
+    assert(st7789_get_aqi_color_rgb565(50) == RGB565_AQI_GOOD);
+
+    assert(st7789_get_aqi_color_rgb565(51) == RGB565_AQI_MODERATE);
+    assert(st7789_get_aqi_color_rgb565(100) == RGB565_AQI_MODERATE);
+
+    assert(st7789_get_aqi_color_rgb565(101) == RGB565_AQI_UNHEALTHY_S);
+    assert(st7789_get_aqi_color_rgb565(150) == RGB565_AQI_UNHEALTHY_S);
+
+    assert(st7789_get_aqi_color_rgb565(151) == RGB565_AQI_UNHEALTHY);
+    assert(st7789_get_aqi_color_rgb565(200) == RGB565_AQI_UNHEALTHY);
+
+    assert(st7789_get_aqi_color_rgb565(201) == RGB565_AQI_VERY_UNHEALTHY);
+    assert(st7789_get_aqi_color_rgb565(300) == RGB565_AQI_VERY_UNHEALTHY);
+
+    assert(st7789_get_aqi_color_rgb565(301) == RGB565_AQI_HAZARDOUS);
+    assert(st7789_get_aqi_color_rgb565(500) == RGB565_AQI_HAZARDOUS);
+
+    printf("  -> PASS: All 6 VN-AQI color levels mapped accurately to RGB565.\n");
+}
+
+// ============================================================================
+// TEST 17: ST7789 Lifecycle, Dashboard Rendering & Deep Sleep Power-Down
+// ============================================================================
+static void test_st7789_lifecycle_and_dashboard_rendering(void) {
+    printf("[TEST 17] Testing ST7789 lifecycle, dashboard rendering & sleep power-down...\n");
+
+    st7789_reset_mock_state();
+    const ST7789MockState *mock = st7789_get_mock_state();
+    assert(mock->is_initialized == false);
+
+    // 1. Initialize Display
+    st7789_init();
+    assert(mock->is_initialized == true);
+    assert(mock->backlight_on == true);
+    assert(mock->in_sleep_mode == false);
+
+    // 2. Render Real-Time Dashboard
+    EdgeDisplayPayload payload;
+    memset(&payload, 0, sizeof(payload));
+    payload.boot_cycle = 42;
+    payload.pm25_calibrated = 21.8f;
+    payload.pm25_raw = 55.0f;
+    payload.aqi = 45;
+    payload.temp_c = 26.5f;
+    payload.rh_percent = 84.0f;
+    payload.co2_ppm = 520.0f;
+    payload.gas_proxy = 110.0f;
+    payload.status_msg = "HEALTHY";
+
+    st7789_render_dashboard(&payload);
+    assert(mock->rendered_aqi == 45);
+    assert(fabsf(mock->rendered_pm25 - 21.8f) < 1e-4f);
+    assert(mock->total_pixels_written > 0);
+
+    // 3. Power-down sequence before Deep Sleep
+    st7789_enter_sleep();
+#if CONFIG_LCD_ALWAYS_ON
+    // In Always-On mode, display backlight stays ON and panel remains awake to show measurements 24/7
+    assert(mock->in_sleep_mode == false);
+    assert(mock->backlight_on == true);
+#else
+    assert(mock->in_sleep_mode == true);
+    assert(mock->backlight_on == false);
+#endif
+
+    printf("  -> PASS: ST7789 initialization, dashboard rendering, and sleep power-down verified.\n");
+}
+
 int main(void) {
     printf("====================================================================\n");
     printf("   ESP32-S3 FIRMWARE & 15-MIN DUTY CYCLE TEST SUITE (TASKS 1 & 2)  \n");
@@ -764,6 +911,12 @@ int main(void) {
     test_burst_accumulator_trimmed_mean_filtering();
     test_burst_duty_cycle_integration();
 
-    printf("\n>>> ALL 13 TESTS (INCLUDING 30-SAMPLE BURST DENOISING) PASSED SUCCESSFULLY! <<<\n");
+    test_sht40_crc8_and_command();
+    test_sht40_response_parser();
+
+    test_st7789_aqi_colors();
+    test_st7789_lifecycle_and_dashboard_rendering();
+
+    printf("\n>>> ALL 17 TESTS (INCLUDING ST7789 LCD SPI & SHT40 I2C) PASSED SUCCESSFULLY! <<<\n");
     return 0;
 }

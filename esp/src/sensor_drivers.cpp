@@ -146,3 +146,71 @@ size_t senseair_s8_build_read_co2_cmd(uint8_t *out_cmd, size_t max_len) {
 
     return 8;
 }
+
+
+// ============================================================================
+// Sensirion SHT40 Temperature & Relative Humidity I2C Driver
+// ============================================================================
+
+uint8_t sht40_compute_crc8(const uint8_t *data, size_t len) {
+    if (!data) {
+        return 0;
+    }
+    uint8_t crc = 0xFF;
+    for (size_t i = 0; i < len; ++i) {
+        crc ^= data[i];
+        for (int bit = 8; bit > 0; --bit) {
+            if (crc & 0x80) {
+                crc = (crc << 1) ^ 0x31;
+            } else {
+                crc = (crc << 1);
+            }
+        }
+    }
+    return crc;
+}
+
+size_t sht40_build_measure_cmd(uint8_t *out_cmd, size_t max_len) {
+    if (!out_cmd || max_len < 1) {
+        return 0;
+    }
+    out_cmd[0] = SHT40_CMD_MEASURE_HIGH_PRECISION;
+    return 1;
+}
+
+bool sht40_parse_response(const uint8_t *buf, size_t len, float *out_temp_c, float *out_rh_percent) {
+    if (!buf || len < SHT40_RESPONSE_SIZE) {
+        return false;
+    }
+
+    // Verify Temperature word CRC (bytes 0..1 vs byte 2)
+    uint8_t calc_temp_crc = sht40_compute_crc8(&buf[0], 2);
+    if (calc_temp_crc != buf[2]) {
+        return false;
+    }
+
+    // Verify Relative Humidity word CRC (bytes 3..4 vs byte 5)
+    uint8_t calc_rh_crc = sht40_compute_crc8(&buf[3], 2);
+    if (calc_rh_crc != buf[5]) {
+        return false;
+    }
+
+    uint16_t t_raw = ((uint16_t)buf[0] << 8) | buf[1];
+    uint16_t rh_raw = ((uint16_t)buf[3] << 8) | buf[4];
+
+    if (out_temp_c) {
+        *out_temp_c = -45.0f + 175.0f * ((float)t_raw / 65535.0f);
+    }
+    if (out_rh_percent) {
+        float rh = -6.0f + 125.0f * ((float)rh_raw / 65535.0f);
+        if (rh < 0.0f) {
+            rh = 0.0f;
+        }
+        if (rh > 100.0f) {
+            rh = 100.0f;
+        }
+        *out_rh_percent = rh;
+    }
+
+    return true;
+}
