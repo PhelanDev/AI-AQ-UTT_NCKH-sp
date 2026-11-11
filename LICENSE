@@ -1,21 +1,28 @@
-MIT License
+PROPRIETARY AND CONFIDENTIAL SOFTWARE LICENSE
+ALL RIGHTS RESERVED
 
-Copyright (c) 2026 PhelanDev
+Copyright (c) 2026 University of Transport Technology (UTT) & PhelanDev.
+Project: Air Quality Monitoring and Forecasting System (AIoT Production Architecture)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. PROPRIETARY RIGHTS AND OWNERSHIP
+This software, including its source code, compiled binaries, hardware schematics, artificial intelligence model architectures, trained weight tensors (including but not limited to INT8 TinyML parameters and GRU neural network checkpoints), telemetry processing algorithms, firmware implementations, and all related documentation, is the exclusive intellectual property of the University of Transport Technology (UTT) and author PhelanDev. All rights not expressly granted in this License are strictly reserved.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. LICENSE RESTRICTIONS
+Except as expressly permitted by prior written agreement from the copyright holders, you may not:
+- Copy, modify, adapt, translate, merge, publish, distribute, sublicense, sell, rent, lease, or transfer any portion of this software or its accompanying documentation.
+- Utilize the source code, hardware designs, TinyML model weights, or empirical research datasets for any commercial purpose or external deployment.
+- Decompile, disassemble, reverse engineer, or attempt to derive the source code, underlying algorithms, or internal structure of compiled firmware and model artifacts.
+- Extract or reuse model parameters, feature preprocessing routines, or mathematical formulations in secondary software products or derivative models.
+- Remove, alter, or conceal any copyright notices, proprietary legends, or trademark identifiers contained in the codebase.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+3. ACADEMIC AND INTERNAL EVALUATION
+Access to this repository is restricted to authorized project researchers and officials designated by the University of Transport Technology for scientific evaluation, academic defense, and institutional review. Scholarly citations and research references must explicitly acknowledge the authors and project provenance in accordance with academic standards.
+
+4. CONFIDENTIALITY
+The architecture, communication protocols, memory layouts, hardware configuration parameters, and proprietary inference optimizations contained in this repository constitute valuable confidential information. Authorized recipients must protect this information from unauthorized disclosure.
+
+5. DISCLAIMER OF WARRANTY
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+6. GOVERNING LAW
+This License shall be governed by and interpreted in accordance with applicable intellectual property laws and international copyright treaties.

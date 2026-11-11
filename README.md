@@ -188,4 +188,4 @@ Air pollution series follow physical dispersion inertia and distinct diurnal cyc
 
 ## 7. License
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+This project is proprietary and confidential. All rights reserved by the University of Transport Technology (UTT) and PhelanDev. See the [LICENSE](LICENSE) file for details.
