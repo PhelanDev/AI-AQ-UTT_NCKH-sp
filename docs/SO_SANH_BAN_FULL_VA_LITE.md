@@ -7,11 +7,13 @@
 
 Trong nghiên cứu khoa học và bảo vệ đồ án tốt nghiệp kỹ thuật, việc lựa chọn mức độ phức tạp của mô hình cần bám sát năng lực phần cứng thực tế và khả năng bảo vệ kiến trúc trước Hội đồng giám khảo:
 
-* **Bản Đầy Đủ (`E:\AQ` - Master / Academic Edition)**:
+* **Bản Đầy Đủ (Master / Academic Edition - Tag `v2.0-academic-full`)**:
+  * Nằm trên Git branch: `research/academic-full` (hoặc tag `v2.0-academic-full`).
   * Được thiết kế cho các công bố khoa học quốc tế (ISI/Scopus), thử nghiệm các kiến trúc đón đầu công nghệ: Residual MLP (ResMLP), Dilated Temporal Convolutional Network (TCN) kết hợp Bidirectional GRU, Autoencoder 16D kết hợp khoảng cách Mahalanobis, và Kriging vi phân bán phương sai (Semivariogram).
   * *Hạn chế khi bảo vệ đồ án đại học*: Quá nhiều khái niệm toán học bậc cao, dễ bị Hội đồng xoáy sâu vào các chứng minh hội tụ ma trận vi phân hoặc nghi ngờ "sinh viên dùng mã nguồn sao chép/mô hình quá khổ không cần thiết (over-engineering)".
 
-* **Bản Rút Gọn (`E:\AQ_Lite` - Student Defense / Practical Edition)**:
+* **Bản Rút Gọn (Student Defense / Practical Edition - Tag `v1.0-student-lite`)**:
+  * Nằm trên Git branch: `main` (hoặc tag `v1.0-student-lite`) trong cùng thư mục `E:\AQ`.
   * Được tinh giản có chủ đích, sử dụng các thuật toán chuẩn mực thuộc giáo trình đại học: **Standard Multi-Layer Perceptron (MLP)** trên Edge, **Gated Recurrent Unit (Vanilla GRU)** trên Gateway, thống kê ngoại lai **3-Sigma ($Z\text{-score} > 3$)**, và nội suy không gian **IDW ($p=2.0$)**.
   * *Ưu thế vượt trội*: Giữ nguyên 100% phần cứng thật, chu kỳ ngủ sâu 15 phút, chính sách 0-Byte Heap, bảng trọng số siêu nhẹ (< 1 KB), tốc độ suy luận dưới 1 microgiây, chứng minh toán học trực tiếp trên bảng viết và giải trình trơn tru 100% câu hỏi của Hội đồng.
 
@@ -94,8 +96,12 @@ Dưới đây là các câu hỏi trọng tâm mà các Thầy/Cô trong Hội �
 
 ---
 
-## 📋 4. KẾT LUẬN VÀ KHUYẾN NGHỊ CHO BẢN NỘP
+## 📋 4. KẾT LUẬN VÀ QUY ƯỚC QUẢN LÝ DỰ ÁN
 
-1. **Thư mục sử dụng để nộp và trình chiếu**: Sử dụng toàn bộ mã nguồn trong thư mục `E:\AQ_Lite`.
-2. **Thư mục bảo tồn**: Thư mục gốc `E:\AQ` tiếp tục được lưu giữ nguyên vẹn để phục vụ viết bài báo khoa học hoặc phát triển các công trình cấp cao hơn sau này.
-3. **Mã nguồn sạch**: Bản `AQ_Lite` đã được loại bỏ toàn bộ các tệp rác, các tệp nhị phân tạm, đảm bảo đóng gói nộp USB hoặc nộp qua hệ thống Đào tạo một cách gọn gàng, chuyên nghiệp.
+1. **Quản lý duy nhất trong một thư mục `E:\AQ`**: Không còn phân tách thành 2 thư mục vật lý rời rạc. Cả hai phiên bản được quản lý tập trung và chuyển đổi mượt mà bằng Git:
+   - **Bản Nộp Sinh Viên (Bản Lite)**: Nhánh `main` / Git Tag `v1.0-student-lite`. Mặc định sẵn sàng cho demo, nộp bài và bảo vệ trước Hội đồng.
+   - **Bản Nghiên Cứu Đầy Đủ (Bản Full)**: Nhánh `research/academic-full` / Git Tag `v2.0-academic-full`. Dành cho nghiên cứu nâng cao, thử nghiệm mở rộng và viết bài báo quốc tế.
+2. **Lệnh chuyển đổi nhanh**:
+   - Chuyển sang bản Full nghiên cứu: `git checkout research/academic-full` (hoặc `git checkout v2.0-academic-full`)
+   - Quay lại bản Lite sinh viên: `git checkout main` (hoặc `git checkout v1.0-student-lite`)
+3. **Mã nguồn sạch**: Bản nộp trên `main` đã được dọn sạch các tệp rác, 100% test suite xanh (Pytest và C++), sẵn sàng đóng gói nộp USB hoặc triển khai phần cứng thực tế.
