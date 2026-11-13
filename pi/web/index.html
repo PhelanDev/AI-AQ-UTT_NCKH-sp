@@ -729,7 +729,7 @@
                     <div>
                         <span class="card-title">Dự Báo Bụi Mịn 24 Giờ Tới</span>
                         <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
-                            Xu hướng nồng độ PM2.5 và khoảng dao động tin cậy trong 24 giờ tới
+                            Biểu đồ nồng độ PM2.5 dự báo theo chuỗi thời gian kèm ngưỡng an toàn QCVN
                         </div>
                     </div>
                 </div>
@@ -949,10 +949,16 @@
             renderHeatmapOverlay();
         }
 
-        // Biểu đồ dự báo GRU 24 giờ với dải tin cậy
+        // Biểu đồ dự báo chuỗi thời gian 24 giờ chuẩn khí tượng
         function initForecastChart() {
             const ctx = document.getElementById('forecastChart').getContext('2d');
             const labels = Array.from({ length: 24 }, (_, i) => `+${i + 1}h`);
+
+            // Gradient đổ bóng mềm mại dưới đường dự báo chuẩn giao diện quan trắc
+            const gradient = ctx.createLinearGradient(0, 0, 0, 260);
+            gradient.addColorStop(0, 'rgba(249, 115, 22, 0.25)');
+            gradient.addColorStop(0.65, 'rgba(249, 115, 22, 0.05)');
+            gradient.addColorStop(1, 'rgba(249, 115, 22, 0.0)');
 
             forecastChart = new Chart(ctx, {
                 type: 'line',
@@ -960,45 +966,26 @@
                     labels: labels,
                     datasets: [
                         {
-                            label: 'Dự Báo PM2.5',
+                            label: 'Dự Báo PM2.5 (µg/m³)',
                             data: [],
                             borderColor: '#F97316',
-                            borderWidth: 2.2,
-                            pointRadius: 2.0,
-                            pointHoverRadius: 4.5,
+                            borderWidth: 2.4,
+                            pointBackgroundColor: '#F97316',
+                            pointBorderColor: '#090A0F',
+                            pointBorderWidth: 1.5,
+                            pointRadius: 2.8,
+                            pointHoverRadius: 5.5,
                             tension: 0.35,
-                            fill: false,
+                            fill: true,
+                            backgroundColor: gradient,
                             pointStyle: 'circle'
-                        },
-                        {
-                            label: 'Mức Trần Dự Kiến',
-                            data: [],
-                            borderColor: 'rgba(148, 163, 184, 0.55)',
-                            borderDash: [4, 4],
-                            borderWidth: 1.2,
-                            pointRadius: 0,
-                            tension: 0.35,
-                            fill: false,
-                            pointStyle: 'line'
-                        },
-                        {
-                            label: 'Mức Sàn Dự Kiến',
-                            data: [],
-                            borderColor: 'rgba(148, 163, 184, 0.55)',
-                            borderDash: [4, 4],
-                            borderWidth: 1.2,
-                            pointRadius: 0,
-                            tension: 0.35,
-                            backgroundColor: 'rgba(249, 115, 22, 0.08)',
-                            fill: '-1',
-                            pointStyle: 'line'
                         },
                         {
                             label: 'Giới Hạn QCVN (50 µg/m³)',
                             data: Array(24).fill(50),
-                            borderColor: 'rgba(239, 68, 68, 0.65)',
+                            borderColor: 'rgba(239, 68, 68, 0.75)',
                             borderDash: [6, 4],
-                            borderWidth: 1.2,
+                            borderWidth: 1.4,
                             pointRadius: 0,
                             fill: false,
                             pointStyle: 'line'
@@ -1033,7 +1020,21 @@
                             borderWidth: 1,
                             padding: 10,
                             titleFont: { family: 'var(--font-mono)' },
-                            bodyFont: { family: 'var(--font-mono)' }
+                            bodyFont: { family: 'var(--font-mono)' },
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.datasetIndex === 0) {
+                                        const val = context.parsed.y;
+                                        let level = 'Tốt';
+                                        if (val > 150) level = 'Nguy Hại';
+                                        else if (val > 80) level = 'Xấu';
+                                        else if (val > 50) level = 'Kém';
+                                        else if (val > 25) level = 'Trung Bình';
+                                        return ` PM2.5: ${val.toFixed(1)} µg/m³ (${level})`;
+                                    }
+                                    return ` Ngưỡng QCVN 05:2023: 50 µg/m³`;
+                                }
+                            }
                         }
                     },
                     scales: {
@@ -1183,8 +1184,6 @@
 
                 if (forecastChart && data.pm25_pred) {
                     forecastChart.data.datasets[0].data = data.pm25_pred;
-                    forecastChart.data.datasets[1].data = data.pm25_p90 || [];
-                    forecastChart.data.datasets[2].data = data.pm25_p10 || [];
                     forecastChart.update();
                 }
             } catch (err) {
