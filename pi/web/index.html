@@ -14,39 +14,34 @@
 
     <style>
         /* ==========================================================================
-           DESIGN SYSTEM: ATMOSPHERIC SLATE & SIGNAL ORANGE (ANTI-AI-SLOP)
-           Quy chuẩn giao diện trạm đo vi khí hậu thực địa UTT
+           DESIGN SYSTEM: MONOCHROME DARK & SEMANTIC AQI SIGNALS
+           Quy chuẩn giao diện trạm quan trắc vi khí hậu UTT 2026
            ========================================================================== */
         :root {
-            /* Palette nền: Obsidian Slate trung tính, chiều sâu khí quyển */
-            --bg-canvas: #0a0e14;
-            --bg-surface: #111722;
-            --bg-card: #161f2e;
-            --bg-card-hover: #1c273a;
-            --border-hairline: rgba(255, 255, 255, 0.08);
-            --border-active: rgba(249, 115, 22, 0.4);
-
-            /* Màu chủ đạo nhận diện: Signal Orange & Terracotta */
-            --brand-orange: #f97316;
-            --brand-orange-light: #fb923c;
-            --brand-orange-dark: #ea580c;
-            --brand-orange-soft: rgba(249, 115, 22, 0.12);
-            --brand-orange-border: rgba(249, 115, 22, 0.28);
+            /* Palette nền: Graphite Monochrome Dark sâu thẳm */
+            --bg-canvas: #090A0F;
+            --bg-surface: #090A0F;
+            --bg-card: #12141C;
+            --bg-card-hover: #161924;
+            --border-hairline: rgba(255, 255, 255, 0.07);
+            --border-subtle: rgba(255, 255, 255, 0.12);
+            --border-focus: rgba(255, 255, 255, 0.22);
 
             /* Typography & Độ tương phản */
-            --text-heading: #f8fafc;
-            --text-body: #cbd5e1;
-            --text-muted: #8090a7;
+            --text-heading: #F8FAFC;
+            --text-body: #CBD5E1;
+            --text-muted: #94A3B8;
+            --text-faint: #64748B;
             --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            --font-mono: "JetBrains Mono", "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-            /* Bảng màu VN-AQI theo QCVN 05:2023/BTNMT */
-            --aqi-good: #10b981;
-            --aqi-moderate: #f59e0b;
-            --aqi-unhealthy-sensitive: #f97316;
-            --aqi-unhealthy: #ef4444;
-            --aqi-very-unhealthy: #a855f7;
-            --aqi-hazardous: #7f1d1d;
+            /* Bảng màu VN-AQI ngữ nghĩa theo QCVN 05:2023/BTNMT */
+            --aqi-good: #10B981;
+            --aqi-moderate: #F59E0B;
+            --aqi-unhealthy-sensitive: #F97316;
+            --aqi-unhealthy: #EF4444;
+            --aqi-very-unhealthy: #A855F7;
+            --aqi-hazardous: #7F1D1D;
         }
 
         * {
@@ -67,8 +62,9 @@
         }
 
         /* Top Navigation Header */
+        /* Top Navigation Header: Flat & Borderless to merge with background */
         header {
-            background-color: var(--bg-surface);
+            background-color: var(--bg-canvas);
             border-bottom: 1px solid var(--border-hairline);
             padding: 14px 28px;
             position: sticky;
@@ -93,21 +89,20 @@
         }
 
         .station-badge-icon {
-            width: 40px;
-            height: 40px;
+            width: 38px;
+            height: 38px;
             border-radius: 8px;
-            background: var(--brand-orange-soft);
-            border: 1px solid var(--brand-orange-border);
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.25rem;
-            color: var(--brand-orange);
+            color: var(--text-heading);
             flex-shrink: 0;
         }
 
         .brand-meta h1 {
-            font-size: 1.15rem;
+            font-size: 1.12rem;
             font-weight: 700;
             color: var(--text-heading);
             letter-spacing: -0.01em;
@@ -115,7 +110,7 @@
         }
 
         .brand-meta p {
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             color: var(--text-muted);
             display: flex;
             align-items: center;
@@ -124,11 +119,11 @@
         }
 
         .location-chip {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.04);
             color: var(--text-body);
             padding: 1px 8px;
             border-radius: 4px;
-            font-size: 0.75rem;
+            font-size: 0.74rem;
             border: 1px solid var(--border-hairline);
         }
 
@@ -141,40 +136,50 @@
         .telemetry-indicator {
             display: flex;
             align-items: center;
-            gap: 7px;
-            font-size: 0.78rem;
+            gap: 8px;
+            font-size: 0.75rem;
             font-family: var(--font-mono);
-            background: var(--brand-orange-soft);
-            color: var(--brand-orange-light);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-muted);
             padding: 6px 12px;
             border-radius: 6px;
-            border: 1px solid var(--brand-orange-border);
+            border: 1px solid var(--border-hairline);
+            letter-spacing: 0.02em;
         }
 
         .indicator-dot {
             width: 7px;
             height: 7px;
-            background-color: var(--brand-orange);
+            background-color: var(--aqi-good);
             border-radius: 50%;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+            animation: pulse-glow 2.5s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.9); }
         }
 
         .btn-sync {
-            background: var(--brand-orange);
-            color: #ffffff;
-            border: 1px solid var(--brand-orange-dark);
+            background: rgba(255, 255, 255, 0.04);
+            color: #E2E8F0;
+            border: 1px solid var(--border-subtle);
             padding: 7px 16px;
             border-radius: 6px;
-            font-size: 0.84rem;
-            font-weight: 600;
+            font-size: 0.82rem;
+            font-weight: 500;
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 8px;
-            transition: background 0.15s ease;
+            transition: all 0.2s ease;
         }
 
         .btn-sync:hover {
-            background: var(--brand-orange-dark);
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--border-focus);
+            color: #FFFFFF;
         }
 
         .btn-sync:active {
@@ -455,25 +460,46 @@
             height: 460px;
         }
 
-        /* Footer */
+        /* Footer: Professional System Status Bar */
         footer {
             border-top: 1px solid var(--border-hairline);
-            padding: 16px 28px;
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            text-align: center;
-            background: var(--bg-surface);
+            padding: 12px 28px;
+            font-size: 0.75rem;
+            color: var(--text-faint);
+            background: var(--bg-canvas);
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 12px;
+            font-family: var(--font-mono);
         }
 
         .footer-note {
             display: flex;
             align-items: center;
             gap: 8px;
+            color: var(--text-muted);
+        }
+
+        .footer-status-bar {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .status-node-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot-mini {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--aqi-good);
         }
     </style>
 </head>
@@ -638,15 +664,26 @@
         </section>
     </main>
 
-    <!-- Footer -->
+    <!-- Footer: System Status Bar -->
     <footer>
         <div class="footer-note">
-            <span>Đề tài NCKH: <strong>Hệ Thống Quan Trắc & Dự Báo Chất Lượng Không Khí</strong></span>
-            <span>•</span>
-            <span>Đại học Công nghệ Giao thông Vận tải (UTT) 2026</span>
+            <span>Đề tài NCKH UTT 2026: <strong>Hệ Thống Quan Trắc &amp; Dự Báo Chất Lượng Không Khí</strong></span>
         </div>
-        <div style="font-family: var(--font-mono); font-size: 0.74rem;">
-            <span>Phần cứng: ESP32-S3 TinyML &amp; Raspberry Pi Gateway</span>
+        <div class="footer-status-bar">
+            <div class="status-node-item">
+                <span class="status-dot-mini"></span>
+                <span>Node ESP32-S3: 96.4% Sleep</span>
+            </div>
+            <span>•</span>
+            <div class="status-node-item">
+                <span class="status-dot-mini"></span>
+                <span>Pi Gateway: Trực Tuyến</span>
+            </div>
+            <span>•</span>
+            <div class="status-node-item">
+                <span class="status-dot-mini"></span>
+                <span>TinyML: &lt; 5ms</span>
+            </div>
         </div>
     </footer>
 
