@@ -194,7 +194,7 @@ class CentralAIEngine:
             [446.0, 604.0, 40.0, 100.0, 29.6, 1514.2, 1413.0, 4.2, 4.6, 1.0, 1.0, 1033.0, 496.0, 1.0],
             dtype=np.float32,
         )
-        self.horizon_std_pm25 = np.array([4.0 + 0.5 * h for h in range(24)], dtype=np.float32)
+        self.horizon_std_pm25 = np.array([3.5 + 0.35 * h for h in range(24)], dtype=np.float32)
 
         fc_params_path = "mlops/models/central_forecaster_params.json"
         if not os.path.exists(fc_params_path):
@@ -208,7 +208,11 @@ class CentralAIEngine:
                 self.feat_min = np.array(fc_meta["feat_min"], dtype=np.float32)
                 self.feat_max = np.array(fc_meta["feat_max"], dtype=np.float32)
             if "horizon_std_pm25" in fc_meta:
-                self.horizon_std_pm25 = np.array(fc_meta["horizon_std_pm25"], dtype=np.float32)
+                raw_std = np.array(fc_meta["horizon_std_pm25"], dtype=np.float32)
+                if float(np.mean(raw_std)) > 20.0:
+                    self.horizon_std_pm25 = raw_std * 0.15
+                else:
+                    self.horizon_std_pm25 = raw_std
 
         # 2. Tham số cho Autoencoder 48D (M4)
         self.ae_min_48 = np.tile(np.array([10.7, 10.7, 20.4, 43.0, 654.0, 103.9], dtype=np.float32), 8)
@@ -554,12 +558,16 @@ class CentralAIEngine:
                 0.65, 2.5
             ))
 
-            base_std = getattr(self, "horizon_std_pm25", np.array([4.0 + 0.5 * h for h in range(24)], dtype=np.float32))
+            base_std = getattr(self, "horizon_std_pm25", np.array([3.5 + 0.35 * h for h in range(24)], dtype=np.float32))
             h_std = base_std * scale_dynamic
-            pm25_p10 = [max(0.0, float(p - 1.2816 * std_h)) for p, std_h in zip(pm25_phys, h_std)]
-            pm25_p90 = [float(p + 1.2816 * std_h) for p, std_h in zip(pm25_phys, h_std)]
-            pm25_p10 = [min(p10, float(p)) for p10, p in zip(pm25_p10, pm25_phys)]
-            pm25_p90 = [max(p90, float(p)) for p90, p in zip(pm25_p90, pm25_phys)]
+            pm25_p10 = []
+            pm25_p90 = []
+            for p, std_h in zip(pm25_phys, h_std):
+                bounded_std = min(float(std_h), max(1.0, 0.35 * float(p)))
+                p10 = max(0.0, min(float(p), float(p - 1.2816 * bounded_std)))
+                p90 = max(float(p), float(p + 1.2816 * bounded_std))
+                pm25_p10.append(p10)
+                pm25_p90.append(p90)
 
             pm25_list = [float(p) for p in pm25_phys]
             aqi_list = [float(a) for a in aqi_phys]
@@ -918,11 +926,21 @@ class CentralAIEngine:
 
         pm25_rep = pm25_forecasts[0]
         aqi_rep = aqi_forecasts[0]
-        base_std = getattr(self, "horizon_std_pm25", np.array([4.0 + 0.5 * h for h in range(24)], dtype=np.float32))
-        pm25_p10 = [max(0.0, float(p - 1.2816 * s_h)) for p, s_h in zip(pm25_rep, base_std)]
-        pm25_p90 = [float(p + 1.2816 * s_h) for p, s_h in zip(pm25_rep, base_std)]
-        pm25_p10 = [min(p10, float(p)) for p10, p in zip(pm25_p10, pm25_rep)]
-        pm25_p90 = [max(p90, float(p)) for p90, p in zip(pm25_p90, pm25_rep)]
+        sigma_hist = float(np.std(feat_16[0, :, 0])) if feat_16.shape[1] > 1 else 0.0
+        scale_dynamic = float(np.clip(
+            0.75 + 0.25 * (sigma_hist / 15.0),
+            0.65, 2.5
+        ))
+        base_std = getattr(self, "horizon_std_pm25", np.array([3.5 + 0.35 * h for h in range(24)], dtype=np.float32))
+        h_std = base_std * scale_dynamic
+        pm25_p10 = []
+        pm25_p90 = []
+        for p, s_h in zip(pm25_rep, h_std):
+            bounded_std = min(float(s_h), max(1.0, 0.35 * float(p)))
+            p10 = max(0.0, min(float(p), float(p - 1.2816 * bounded_std)))
+            p90 = max(float(p), float(p + 1.2816 * bounded_std))
+            pm25_p10.append(p10)
+            pm25_p90.append(p90)
 
         pm25_list = [float(p) for p in pm25_rep]
         aqi_list = [float(a) for a in aqi_rep]
