@@ -150,15 +150,25 @@ class AQWebServerHandler(BaseHTTPRequestHandler):
         # Tắt bớt log mặc định để giữ console sạch sẽ và đạt hiệu năng tối đa
         return
 
+    def handle(self):
+        """Bọc handle để triệt tiêu lỗi BrokenPipeError khi client ngắt kết nối hoặc refresh trang."""
+        try:
+            super().handle()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
     def _send_json_response(self, status_code: int, data_bytes: bytes):
         """Gửi phản hồi JSON chuẩn tối ưu."""
-        self.send_response(status_code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(data_bytes)))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
-        self.end_headers()
-        self.wfile.write(data_bytes)
+        try:
+            self.send_response(status_code)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(data_bytes)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.end_headers()
+            self.wfile.write(data_bytes)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def do_OPTIONS(self):
         """Hỗ trợ CORS preflight."""
@@ -192,11 +202,14 @@ class AQWebServerHandler(BaseHTTPRequestHandler):
                     "<p>VN-AQI Dashboard</p><script src='leaflet.js'></script></body></html>"
                 ).encode("utf-8")
 
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(content)))
-            self.end_headers()
-            self.wfile.write(content)
+            try:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
 
         elif path == "/api/status":
             uptime = round(time.time() - state.start_time, 1)
@@ -259,9 +272,18 @@ class AQWebServerHandler(BaseHTTPRequestHandler):
             self._send_json_response(404, err)
 
 
-def create_server(host: str = "0.0.0.0", port: int = 8080, engine: Optional[CentralAIEngine] = None) -> ThreadingHTTPServer:
-    """Khởi tạo thể hiện ThreadingHTTPServer gắn liền với App State."""
-    server = ThreadingHTTPServer((host, port), AQWebServerHandler)
+class AQThreadingHTTPServer(ThreadingHTTPServer):
+    """Máy chủ HTTP đa luồng, triệt tiêu traceback console khi client ngắt kết nối đột ngột."""
+    def handle_error(self, request, client_address):
+        exc_type, _, _ = sys.exc_info()
+        if exc_type and issubclass(exc_type, (BrokenPipeError, ConnectionResetError)):
+            return
+        super().handle_error(request, client_address)
+
+
+def create_server(host: str = "0.0.0.0", port: int = 8080, engine: Optional[CentralAIEngine] = None) -> AQThreadingHTTPServer:
+    """Khởi tạo thể hiện AQThreadingHTTPServer gắn liền với App State."""
+    server = AQThreadingHTTPServer((host, port), AQWebServerHandler)
     server.app_state = AQServerState(engine=engine)
     return server
 
