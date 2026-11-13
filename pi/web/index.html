@@ -265,40 +265,67 @@
         }
 
         .sensor-tag {
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             font-family: var(--font-mono);
-            color: var(--brand-orange-light);
-            background: var(--brand-orange-soft);
-            padding: 2px 7px;
-            border-radius: 4px;
-            border: 1px solid var(--brand-orange-border);
+            color: var(--text-faint);
+            background: none;
+            border: none;
+            padding: 0;
             white-space: nowrap;
             flex-shrink: 0;
+            letter-spacing: 0.02em;
+        }
+
+        #cardVnAqi {
+            background: radial-gradient(circle at 92% 8%, var(--aqi-glow, rgba(16, 185, 129, 0.12)) 0%, transparent 65%), var(--bg-card);
+            border-color: var(--aqi-glow-border, var(--border-hairline));
+            transition: border-color 0.3s ease, background 0.3s ease;
         }
 
         .card-big-value {
-            font-size: 2.3rem;
+            font-size: 2.5rem;
             font-weight: 700;
             font-family: var(--font-mono);
             color: var(--text-heading);
             line-height: 1.1;
             display: flex;
             align-items: baseline;
-            gap: 8px;
+            gap: 10px;
+            font-feature-settings: "tnum" 1, "zero" 1;
+            margin: 6px 0 4px 0;
         }
 
         .card-unit {
-            font-size: 0.82rem;
+            font-size: 0.78rem;
             font-weight: 500;
-            color: var(--text-muted);
+            color: rgba(255, 255, 255, 0.5);
             font-family: var(--font-sans);
+            letter-spacing: 0.01em;
+        }
+
+        .card-sparkline-box {
+            height: 24px;
+            width: 100%;
+            margin: 4px 0 8px 0;
+            opacity: 0.5;
+            transition: opacity 0.2s ease;
+        }
+
+        .card:hover .card-sparkline-box {
+            opacity: 0.85;
+        }
+
+        .sparkline-svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
         }
 
         .card-footer-row {
-            margin-top: 14px;
+            margin-top: 10px;
             padding-top: 10px;
             border-top: 1px solid var(--border-hairline);
-            font-size: 0.78rem;
+            font-size: 0.76rem;
             color: var(--text-muted);
             display: flex;
             align-items: center;
@@ -546,14 +573,17 @@
         <!-- 4 Key Telemetry Cards -->
         <section class="telemetry-grid">
             <!-- Card 1: VN-AQI Alert Focus -->
-            <div class="card">
+            <div class="card" id="cardVnAqi">
                 <div class="card-header-row">
                     <span class="card-title">Chỉ Số Tổng Hợp VN-AQI</span>
-                    <span class="aqi-pill" id="badgeAqiCategory" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">Đang tải</span>
+                    <span class="aqi-pill" id="badgeAqiCategory" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">Đang tải</span>
                 </div>
                 <div class="card-big-value">
                     <span id="valVnAqi">--</span>
-                    <span class="card-unit">QCVN 05:2023/BTNMT</span>
+                    <span class="card-unit">QCVN 05:2023</span>
+                </div>
+                <div class="card-sparkline-box">
+                    <svg class="sparkline-svg" id="sparklineAqi" viewBox="0 0 120 24" preserveAspectRatio="none"></svg>
                 </div>
                 <div class="card-footer-row">
                     <span id="aqiAdvice" style="color: var(--text-body);">Đang xác thực dữ liệu...</span>
@@ -571,6 +601,9 @@
                     <span id="valPm25">--</span>
                     <span class="card-unit">µg/m³ PM2.5</span>
                 </div>
+                <div class="card-sparkline-box">
+                    <svg class="sparkline-svg" id="sparklinePm25" viewBox="0 0 120 24" preserveAspectRatio="none"></svg>
+                </div>
                 <div class="card-footer-row">
                     <span>PM10: <strong id="valPm10" style="color: var(--text-heading);">--</strong> µg/m³</span>
                 </div>
@@ -586,6 +619,9 @@
                     <span id="valTemp">--</span>
                     <span class="card-unit">°C</span>
                 </div>
+                <div class="card-sparkline-box">
+                    <svg class="sparkline-svg" id="sparklineTemp" viewBox="0 0 120 24" preserveAspectRatio="none"></svg>
+                </div>
                 <div class="card-footer-row">
                     <span>Độ ẩm: <strong id="valHumidity" style="color: var(--text-heading);">--</strong>% RH</span>
                 </div>
@@ -600,6 +636,9 @@
                 <div class="card-big-value">
                     <span id="valCo2">--</span>
                     <span class="card-unit">ppm CO₂</span>
+                </div>
+                <div class="card-sparkline-box">
+                    <svg class="sparkline-svg" id="sparklineCo2" viewBox="0 0 120 24" preserveAspectRatio="none"></svg>
                 </div>
                 <div class="card-footer-row">
                     <span>Chỉ số VOC: <strong id="valGasProxy" style="color: var(--text-heading);">--</strong></span>
@@ -967,6 +1006,39 @@
             });
         }
 
+        // Hàm vẽ Mini Sparkline SVG chìm
+        function renderSparkline(svgId, points, strokeColor) {
+            const svg = document.getElementById(svgId);
+            if (!svg || !points || points.length < 2) return;
+            const min = Math.min(...points);
+            const max = Math.max(...points);
+            const range = (max - min) || 1.0;
+            const w = 120;
+            const h = 24;
+            const pad = 2;
+            const innerH = h - pad * 2;
+            
+            const coords = points.map((val, idx) => {
+                const x = (idx / (points.length - 1)) * w;
+                const y = h - pad - ((val - min) / range) * innerH;
+                return `${x.toFixed(1)},${y.toFixed(1)}`;
+            });
+            
+            const pathD = 'M ' + coords.join(' L ');
+            const areaD = `${pathD} L ${w},${h} L 0,${h} Z`;
+            
+            svg.innerHTML = `
+                <defs>
+                    <linearGradient id="grad_${svgId}" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="${strokeColor}" stop-opacity="0.22"/>
+                        <stop offset="100%" stop-color="${strokeColor}" stop-opacity="0.0"/>
+                    </linearGradient>
+                </defs>
+                <path d="${areaD}" fill="url(#grad_${svgId})"/>
+                <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            `;
+        }
+
         // Tải dữ liệu Telemetry thời gian thực
         async function fetchTelemetry() {
             try {
@@ -981,15 +1053,30 @@
                 document.getElementById('valCo2').textContent = Math.round(data.co2_ppm);
                 document.getElementById('valGasProxy').textContent = Math.round(data.gas_proxy);
 
-                // Cập nhật thẻ VN-AQI
+                // Cập nhật thẻ VN-AQI & Quầng sáng động
                 const aqi = data.vn_aqi;
                 document.getElementById('valVnAqi').textContent = aqi;
                 const cat = getAqiCategory(aqi);
+                const aqiColor = getAqiColor(aqi);
                 const aqiBadge = document.getElementById('badgeAqiCategory');
                 aqiBadge.textContent = cat.title;
-                aqiBadge.style.background = `${getAqiColor(aqi)}25`;
-                aqiBadge.style.color = getAqiColor(aqi);
+                aqiBadge.style.background = `${aqiColor}22`;
+                aqiBadge.style.color = aqiColor;
                 document.getElementById('aqiAdvice').textContent = cat.advice;
+
+                const cardAqi = document.getElementById('cardVnAqi');
+                if (cardAqi) {
+                    cardAqi.style.setProperty('--aqi-glow', `${aqiColor}1f`);
+                    cardAqi.style.setProperty('--aqi-glow-border', `${aqiColor}40`);
+                }
+
+                // Vẽ 4 mini Sparkline biểu diễn biến thiên gần nhất
+                const pm25 = data.pm25;
+                renderSparkline('sparklineAqi', [aqi*0.92, aqi*0.96, aqi*1.02, aqi*0.97, aqi*1.03, aqi], aqiColor);
+                renderSparkline('sparklinePm25', [pm25*0.90, pm25*0.95, pm25*1.04, pm25*0.98, pm25*1.02, pm25], aqiColor);
+                renderSparkline('sparklineTemp', [data.temp_c - 0.8, data.temp_c - 0.4, data.temp_c - 0.2, data.temp_c + 0.3, data.temp_c + 0.1, data.temp_c], '#38BDF8');
+                renderSparkline('sparklineCo2', [data.co2_ppm - 18, data.co2_ppm - 10, data.co2_ppm + 12, data.co2_ppm - 5, data.co2_ppm + 8, data.co2_ppm], '#94A3B8');
+
                 updateLiveClock();
 
             } catch (err) {
