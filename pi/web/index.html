@@ -547,14 +547,13 @@
                 </div>
                 <div class="card-footer-row">
                     <span>PM10: <strong id="valPm10" style="color: var(--text-heading);">--</strong> µg/m³</span>
-                    <span style="color: var(--brand-orange-light);">Lọc 20% Trimmed Mean</span>
                 </div>
             </div>
 
             <!-- Card 3: Microclimate (Sensirion SHT40) -->
             <div class="card">
                 <div class="card-header-row">
-                    <span class="card-title">Vi Khí Hậu & Điểm Sương</span>
+                    <span class="card-title">Nhiệt Độ & Độ Ẩm</span>
                     <span class="sensor-tag">Sensirion SHT40</span>
                 </div>
                 <div class="card-big-value">
@@ -563,7 +562,6 @@
                 </div>
                 <div class="card-footer-row">
                     <span>Độ ẩm: <strong id="valHumidity" style="color: var(--text-heading);">--</strong>% RH</span>
-                    <span>Điểm sương: <strong id="valDewPoint" style="color: var(--text-heading);">--</strong>°C</span>
                 </div>
             </div>
 
@@ -579,7 +577,6 @@
                 </div>
                 <div class="card-footer-row">
                     <span>Chỉ số VOC: <strong id="valGasProxy" style="color: var(--text-heading);">--</strong></span>
-                    <span style="color: #10b981;">● Ngưỡng An Toàn</span>
                 </div>
             </div>
         </section>
@@ -946,12 +943,6 @@
                 document.getElementById('valHumidity').textContent = data.rh_percent.toFixed(0);
                 document.getElementById('valCo2').textContent = Math.round(data.co2_ppm);
                 document.getElementById('valGasProxy').textContent = Math.round(data.gas_proxy);
-
-                // Tính điểm sương Magnus-Tetens
-                const t = data.temp_c;
-                const rh = data.rh_percent;
-                const dp = t - ((100 - rh) / 5);
-                document.getElementById('valDewPoint').textContent = dp.toFixed(1);
 
                 // Cập nhật thẻ VN-AQI
                 const aqi = data.vn_aqi;
