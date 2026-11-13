@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Quan Trắc & Dự Báo Không Khí Đa Tầng | 54 Triều Khúc (UTT)</title>
+    <title>Hệ Thống Quan Trắc & Dự Báo Không Khí | 54 Triều Khúc (UTT)</title>
     
     <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -420,48 +420,6 @@
             background: rgba(255, 255, 255, 0.02);
         }
 
-        /* Bottom Section: Edge AI Diagnostics */
-        .diagnostics-panel {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 18px 24px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-        }
-
-        .diag-item {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .diag-label {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            font-weight: 600;
-        }
-
-        .diag-value {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .diag-code {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            font-size: 0.85rem;
-            color: #38bdf8;
-            background: rgba(56, 189, 248, 0.1);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-
         footer {
             border-top: 1px solid var(--border-color);
             padding: 16px 24px;
@@ -478,7 +436,7 @@
     <header>
         <div class="header-container">
             <div class="brand-title">
-                <h1>HỆ THỐNG QUAN TRẮC & DỰ BÁO CHẤT LƯỢNG KHÔNG KHÍ ĐA TẦNG</h1>
+                <h1>HỆ THỐNG QUAN TRẮC & DỰ BÁO CHẤT LƯỢNG KHÔNG KHÍ</h1>
                 <p>
                     <span>Trường Đại học Công nghệ Giao thông Vận tải (UTT) - Khoa CNTT</span>
                     <span class="location-tag">📍 Trạm Thực Nghiệm: 54 Triều Khúc, Thanh Xuân Nam, Hà Nội</span>
@@ -641,43 +599,6 @@
                         <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Đang tải dữ liệu dự báo...</td></tr>
                     </tbody>
                 </table>
-            </div>
-        </section>
-
-        <!-- Bottom Diagnostics Panel -->
-        <section class="diagnostics-panel">
-            <div class="diag-item">
-                <span class="diag-label">Trạm Đo Thực Tế Mẫu</span>
-                <span class="diag-value">
-                    <span>Trạm UTT 54 Triều Khúc</span>
-                    <span class="diag-code">STATION_01</span>
-                </span>
-                <span style="font-size: 0.78rem; color: var(--text-muted);">Tọa độ: 20.9852°N, 105.7972°E (Hà Nội)</span>
-            </div>
-
-            <div class="diag-item">
-                <span class="diag-label">Cơ Chế Lấy Mẫu & Lọc Nhiễu ESP32-S3</span>
-                <span class="diag-value" style="color: #10b981;">
-                    ✓ 30 Mẫu Burst / 15 Phút • Lọc 20% Trimmed Mean
-                </span>
-                <span style="font-size: 0.78rem; color: var(--text-muted);">Loại bỏ 3 xung nhiễu cực đại & 3 giá trị đáy dị biệt (Heap RAM = 0 Byte)</span>
-            </div>
-
-            <div class="diag-item">
-                <span class="diag-label">Chu Kỳ Năng Lượng Node ESP32-S3</span>
-                <span class="diag-value">
-                    <span>Tỷ lệ Ngủ Sâu: <strong>96.44%</strong> (868s/900s)</span>
-                    <span class="diag-code">FSM Duty Cycle: 15 Phút</span>
-                </span>
-                <span style="font-size: 0.78rem; color: var(--text-muted);">Thời gian đo & TinyML: 32s • Trễ Pi Gateway: <span id="valPiLatency">--</span> ms</span>
-            </div>
-
-            <div class="diag-item">
-                <span class="diag-label">Chẩn Đoán Dị Thường Vi Khí Hậu (Autoencoder)</span>
-                <span class="diag-value" id="valAnomalyStatus" style="color: #10b981;">
-                    ● Trạng thái Bình Thường
-                </span>
-                <span style="font-size: 0.78rem; color: var(--text-muted);">Kiểm định ngưỡng động 3-Sigma kết hợp QCVN 05:2023</span>
             </div>
         </section>
     </main>
@@ -954,28 +875,6 @@
                 document.getElementById('aqiAdvice').textContent = cat.advice;
                 document.getElementById('telemetryTime').textContent = new Date().toLocaleTimeString('vi-VN');
 
-                // Cập nhật độ trễ tính toán AI trên Pi Gateway
-                if (data.latency_ms !== undefined) {
-                    const latEl = document.getElementById('valPiLatency');
-                    if (latEl) latEl.textContent = data.latency_ms;
-                }
-
-                // Cập nhật chẩn đoán dị thường Autoencoder
-                if (data.anomaly) {
-                    const anom = data.anomaly;
-                    const anomEl = document.getElementById('valAnomalyStatus');
-                    if (anomEl) {
-                        if (anom.is_anomaly) {
-                            anomEl.innerHTML = `⚠️ Dị thường: ${anom.signature_class_name || 'Phát hiện bất thường'}`;
-                            anomEl.style.color = '#ef4444';
-                        } else {
-                            const clsName = anom.signature_class_name ? ` (${anom.signature_class_name})` : '';
-                            anomEl.innerHTML = `● Trạng thái Bình Thường${clsName}`;
-                            anomEl.style.color = '#10b981';
-                        }
-                    }
-                }
-
             } catch (err) {
                 console.error('Lỗi tải dữ liệu telemetry:', err);
             }
@@ -1068,10 +967,6 @@
                 });
 
                 if (res.ok) {
-                    const jsonRes = await res.json();
-                    if (jsonRes.cycle_result && jsonRes.cycle_result.execution_latency_ms) {
-                        document.getElementById('valPiLatency').textContent = jsonRes.cycle_result.execution_latency_ms;
-                    }
                     // Tải lại toàn bộ dữ liệu mới nhất
                     await Promise.all([fetchTelemetry(), fetchMapData(), fetchForecastData()]);
                 }
