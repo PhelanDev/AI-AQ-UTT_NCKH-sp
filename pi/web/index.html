@@ -580,10 +580,10 @@
                     </svg>
                 </div>
                 <div class="brand-meta">
-                    <h1>HỆ THỐNG QUAN TRẮC & DỰ BÁO CHẤT LƯỢNG KHÔNG KHÍ</h1>
+                    <h1>QUAN TRẮC & DỰ BÁO CHẤT LƯỢNG KHÔNG KHÍ</h1>
                     <p>
                         <span>Trường Đại học Công nghệ GTVT (UTT) • Khoa CNTT</span>
-                        <span class="location-chip">Trạm Thực Nghiệm: 54 Triều Khúc, Hà Nội</span>
+                        <span class="location-chip">Trạm Đo: 54 Triều Khúc, Hà Nội</span>
                     </p>
                 </div>
             </div>
@@ -591,7 +591,7 @@
             <div class="header-controls">
                 <div class="telemetry-indicator">
                     <div class="indicator-dot"></div>
-                    <span>CHU KỲ 15 PHÚT • TRỰC TUYẾN</span>
+                    <span>TRỰC TUYẾN • 15 PHÚT/LẦN</span>
                 </div>
                 <button class="btn-sync" id="btnSyncCycle" onclick="triggerManualCycle()">
                     <svg id="syncIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
@@ -600,7 +600,7 @@
                         <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
                         <path d="M16 16h5v5"/>
                     </svg>
-                    <span id="syncText">Cập Nhật Chu Kỳ</span>
+                    <span id="syncText">Cập Nhật Dữ Liệu</span>
                 </button>
             </div>
         </div>
@@ -613,7 +613,7 @@
             <!-- Card 1: VN-AQI Alert Focus -->
             <div class="card" id="cardVnAqi">
                 <div class="card-header-row">
-                    <span class="card-title">Chỉ Số Tổng Hợp VN-AQI</span>
+                    <span class="card-title">Chất Lượng Không Khí VN-AQI</span>
                     <span class="aqi-pill" id="badgeAqiCategory" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">Đang tải</span>
                 </div>
                 <div class="card-big-value">
@@ -624,7 +624,7 @@
                     <svg class="sparkline-svg" id="sparklineAqi" viewBox="0 0 120 24" preserveAspectRatio="none"></svg>
                 </div>
                 <div class="card-footer-row">
-                    <span id="aqiAdvice" style="color: var(--text-body);">Đang xác thực dữ liệu...</span>
+                    <span id="aqiAdvice" style="color: var(--text-body);">Đang tải khuyến nghị...</span>
                     <span id="telemetryTime" style="font-family: var(--font-mono);">--:--:--</span>
                 </div>
             </div>
@@ -668,7 +668,7 @@
             <!-- Card 4: Gases (SenseAir S8 + SGP41) -->
             <div class="card">
                 <div class="card-header-row">
-                    <span class="card-title">Khí CO₂ & Khí Độc</span>
+                    <span class="card-title">Khí CO₂ & Hợp Chất Khí (VOC)</span>
                     <span class="sensor-tag">SenseAir S8 + SGP41</span>
                 </div>
                 <div class="card-big-value">
@@ -690,9 +690,9 @@
             <div class="card map-card">
                 <div class="map-toolbar">
                     <div>
-                        <span class="card-title">Bản Đồ Phân Bố Bụi Mịn PM2.5</span>
+                        <span class="card-title">Vùng Phân Bố Bụi Mịn PM2.5</span>
                         <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
-                            Mô hình tán xạ khói Gaussian vi khí hậu quanh trạm 54 Triều Khúc
+                            Mô phỏng hướng phát tán bụi theo gió quanh trạm 54 Triều Khúc
                         </div>
                     </div>
 
@@ -729,7 +729,7 @@
                     <div>
                         <span class="card-title">Dự Báo Bụi Mịn 24 Giờ Tới</span>
                         <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
-                            Dự báo xu hướng nồng độ 24 giờ tới kèm khoảng dao động dự kiến
+                            Xu hướng nồng độ PM2.5 và khoảng dao động tin cậy trong 24 giờ tới
                         </div>
                     </div>
                 </div>
@@ -749,17 +749,17 @@
         <div class="footer-status-bar">
             <div class="status-node-item">
                 <span class="status-dot-mini"></span>
-                <span>Node ESP32-S3: 96.4% Sleep</span>
+                <span>Trạm đo ESP32-S3: Ngủ tiết kiệm pin 96%</span>
             </div>
             <span>•</span>
             <div class="status-node-item">
                 <span class="status-dot-mini"></span>
-                <span>Pi Gateway: Trực Tuyến</span>
+                <span>Máy chủ Pi: Trực tuyến</span>
             </div>
             <span>•</span>
             <div class="status-node-item">
                 <span class="status-dot-mini"></span>
-                <span>TinyML: &lt; 5ms</span>
+                <span>Độ trễ AI TinyML: &lt; 5ms</span>
             </div>
         </div>
     </footer>
@@ -787,12 +787,12 @@
         }
 
         function getAqiCategory(aqi) {
-            if (aqi <= 50) return { title: 'Tốt', advice: 'Không khí trong lành, tự do hoạt động ngoài trời' };
-            if (aqi <= 100) return { title: 'Trung Bình', advice: 'Chấp nhận được, nhóm nhạy cảm hạn chế gắng sức' };
-            if (aqi <= 150) return { title: 'Kém', advice: 'Người nhạy cảm nên đeo khẩu trang khi ra ngoài' };
-            if (aqi <= 200) return { title: 'Xấu', advice: 'Người bình thường giảm bớt hoạt động ngoài trời' };
-            if (aqi <= 300) return { title: 'Rất Xấu', advice: 'Hạn chế tối đa ra ngoài, đóng cửa sổ' };
-            return { title: 'Nguy Hại', advice: 'Cảnh báo khẩn cấp, mọi người nên ở trong nhà' };
+            if (aqi <= 50) return { title: 'Tốt', advice: 'Không khí sạch, thích hợp hoạt động ngoài trời' };
+            if (aqi <= 100) return { title: 'Trung Bình', advice: 'Không khí tạm ổn, người có bệnh hô hấp nên lưu ý' };
+            if (aqi <= 150) return { title: 'Kém', advice: 'Không khí kém, nên đeo khẩu trang khi ra đường' };
+            if (aqi <= 200) return { title: 'Xấu', advice: 'Không khí xấu, hạn chế tập thể dục ngoài trời' };
+            if (aqi <= 300) return { title: 'Rất Xấu', advice: 'Rất xấu, nên ở trong nhà và đóng kín cửa sổ' };
+            return { title: 'Nguy Hại', advice: 'Mức nguy hại, tránh hoàn toàn mọi hoạt động ngoài trời' };
         }
 
         function pm25ToRgb(val) {
@@ -850,10 +850,10 @@
 
             // Thêm bộ chuyển lớp (Layer Switcher) ở góc trên bên phải
             const baseMaps = {
-                "Chế Độ Tối (Mặc định)": darkAtmospheric,
-                "Bản Đồ Đường Phố": esriStreet,
-                "Vệ Tinh Thực Địa": esriSatellite,
-                "Bản Đồ Địa Hình": esriTopo
+                "Bản đồ tối (Mặc định)": darkAtmospheric,
+                "Bản đồ đường phố": esriStreet,
+                "Bản đồ vệ tinh": esriSatellite,
+                "Bản đồ địa hình": esriTopo
             };
             L.control.layers(baseMaps, null, { position: 'topright' }).addTo(leafletMap);
 
@@ -867,15 +867,15 @@
             stationMarker = L.marker([uttLat, uttLon], { icon: customIcon }).addTo(leafletMap);
             stationMarker.bindPopup(`
                 <div style="font-family: var(--font-sans); padding: 4px; color: #1e293b;">
-                    <strong style="color: #ea580c; font-size: 13px;">Trạm Thực Nghiệm UTT</strong><br/>
-                    <span style="font-size: 11px; color: #64748b;">Số 54 Triều Khúc, Thanh Xuân Nam, Hà Nội</span>
+                    <strong style="color: #ea580c; font-size: 13px;">Trạm Đo UTT Triều Khúc</strong><br/>
+                    <span style="font-size: 11px; color: #64748b;">54 Triều Khúc, Thanh Xuân Nam, Hà Nội</span>
                     <hr style="margin: 5px 0; border: none; border-top: 1px solid #cbd5e1;"/>
-                    <div style="font-size: 11px; line-height: 1.4;">
-                        • Tọa độ: <strong>20.9837°N, 105.7975°E</strong><br/>
-                        • Vị trí: <strong>Trạm Thực Nghiệm ĐH Công Nghệ GTVT</strong><br/>
-                        • Bán kính ảnh hưởng: <strong>~500m</strong><br/>
-                        • Cảm biến: <strong>PMS7003 + SHT40 + S8 + SGP41</strong><br/>
-                        • Chu kỳ truyền: <strong>15 phút</strong>
+                    <div style="font-size: 11px; line-height: 1.5;">
+                        • Tọa độ: <strong>20.9837°B, 105.7975°Đ</strong><br/>
+                        • Vị trí đặt trạm: <strong>ĐH Công nghệ GTVT</strong><br/>
+                        • Bán kính bao phủ: <strong>khoảng 500m</strong><br/>
+                        • Cảm biến tích hợp: <strong>PMS7003, SHT40, S8, SGP41</strong><br/>
+                        • Tần suất gửi tin: <strong>15 phút/lần</strong>
                     </div>
                 </div>
             `);
@@ -994,7 +994,7 @@
                             pointStyle: 'line'
                         },
                         {
-                            label: 'Quy Chuẩn An Toàn (50 µg/m³)',
+                            label: 'Giới Hạn QCVN (50 µg/m³)',
                             data: Array(24).fill(50),
                             borderColor: 'rgba(239, 68, 68, 0.65)',
                             borderDash: [6, 4],
@@ -1198,7 +1198,7 @@
             const btnText = document.getElementById('syncText');
 
             btn.classList.add('loading');
-            btnText.textContent = 'Đang Tính Toán...';
+            btnText.textContent = 'Đang Cập Nhật...';
 
             try {
                 const res = await fetch('/api/trigger_cycle', {
@@ -1214,7 +1214,7 @@
                 console.error('Lỗi kích hoạt chu kỳ mới:', err);
             } finally {
                 btn.classList.remove('loading');
-                btnText.textContent = 'Cập Nhật Chu Kỳ';
+                btnText.textContent = 'Cập Nhật Dữ Liệu';
             }
         }
 
