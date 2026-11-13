@@ -729,7 +729,7 @@
                     <div>
                         <span class="card-title">Dự Báo Bụi Mịn 24 Giờ Tới</span>
                         <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
-                            Mô hình GRU 1-Layer với dải tin cậy phân vị P10 - P90
+                            Dự báo xu hướng nồng độ 24 giờ tới kèm khoảng dao động dự kiến
                         </div>
                     </div>
                 </div>
@@ -960,7 +960,7 @@
                     labels: labels,
                     datasets: [
                         {
-                            label: 'Dự Báo GRU',
+                            label: 'Dự Báo PM2.5',
                             data: [],
                             borderColor: '#F97316',
                             borderWidth: 2.2,
@@ -971,7 +971,7 @@
                             pointStyle: 'circle'
                         },
                         {
-                            label: 'Dải Tin Cậy P90',
+                            label: 'Mức Trần Dự Kiến',
                             data: [],
                             borderColor: 'rgba(148, 163, 184, 0.35)',
                             borderDash: [3, 3],
@@ -981,7 +981,7 @@
                             pointStyle: 'line'
                         },
                         {
-                            label: 'Dải Tin Cậy P10',
+                            label: 'Mức Sàn Dự Kiến',
                             data: [],
                             borderColor: 'rgba(148, 163, 184, 0.35)',
                             borderDash: [3, 3],
@@ -992,7 +992,7 @@
                             pointStyle: 'line'
                         },
                         {
-                            label: 'QCVN 05 (50 µg/m³)',
+                            label: 'Quy Chuẩn An Toàn (50 µg/m³)',
                             data: Array(24).fill(50),
                             borderColor: 'rgba(239, 68, 68, 0.65)',
                             borderDash: [6, 4],
