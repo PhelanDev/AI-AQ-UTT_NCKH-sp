@@ -245,16 +245,18 @@
         .card-header-row {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
+            align-items: center;
+            gap: 12px;
             margin-bottom: 12px;
         }
 
         .card-title {
-            font-size: 0.78rem;
+            font-size: 0.76rem;
             font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.03em;
+            line-height: 1.3;
         }
 
         .sensor-tag {
@@ -265,6 +267,8 @@
             padding: 2px 7px;
             border-radius: 4px;
             border: 1px solid var(--brand-orange-border);
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .card-big-value {
@@ -572,7 +576,7 @@
             <!-- Card 4: Gases (SenseAir S8 + SGP41) -->
             <div class="card">
                 <div class="card-header-row">
-                    <span class="card-title">Khí Độc & Khí Nhà Kính</span>
+                    <span class="card-title">Khí CO₂ & Khí Độc</span>
                     <span class="sensor-tag">SenseAir S8 + SGP41</span>
                 </div>
                 <div class="card-big-value">
