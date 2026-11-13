@@ -20,6 +20,7 @@ from pi.config import (
     DISTANCE_MATRIX,
     TELEMETRY_INTERVAL_S,
     wgs84_to_utm48n,
+    utm48n_to_wgs84,
 )
 
 
@@ -366,9 +367,7 @@ def build_adaptive_spatial_heatmap(
             coords_w = coords_in.copy()
         else:
             coords_u = coords_in.copy()
-            lat_est = 20.9852 + (coords_u[:, 1] - 2320700.0) / 110574.0
-            lon_est = 105.7972 + (coords_u[:, 0] - 499700.0) / (111320.0 * math.cos(math.radians(20.9852)))
-            coords_w = np.column_stack([lat_est, lon_est])
+            coords_w = np.array([utm48n_to_wgs84(row[0], row[1]) for row in coords_in], dtype=np.float64)
     else:
         coords_u = STATION_COORDS_UTM[:N].copy()
         coords_w = STATION_COORDS_WGS84[:N].copy()
@@ -384,16 +383,15 @@ def build_adaptive_spatial_heatmap(
     else:
         s_ids = list(STATION_IDS[:N]) if N <= len(STATION_IDS) else [f"STATION_{i+1:02d}" for i in range(N)]
 
-    # Bounding box
+    # Bounding box chuẩn xác từ UTM sang WGS84
     span = max(buffer_m, 2600.0)
     x_min = float(np.min(coords_u[:, 0]) - span)
     x_max = float(np.max(coords_u[:, 0]) + span)
     y_min = float(np.min(coords_u[:, 1]) - span)
     y_max = float(np.max(coords_u[:, 1]) + span)
-    lat_min = float(np.min(coords_w[:, 0]) - 0.02)
-    lat_max = float(np.max(coords_w[:, 0]) + 0.02)
-    lon_min = float(np.min(coords_w[:, 1]) - 0.02)
-    lon_max = float(np.max(coords_w[:, 1]) + 0.02)
+
+    lat_min, lon_min = utm48n_to_wgs84(x_min, y_min)
+    lat_max, lon_max = utm48n_to_wgs84(x_max, y_max)
 
     x_axis = np.linspace(x_min, x_max, grid_size, dtype=np.float64)
     y_axis = np.linspace(y_min, y_max, grid_size, dtype=np.float64)

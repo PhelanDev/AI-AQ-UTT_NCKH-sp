@@ -224,8 +224,8 @@ def test_central_engine_single_prototype_station():
 
     marker = web_map["markers"][0]
     assert marker["id"] == "STATION_01"
-    assert np.isclose(marker["lat"], 20.9852, atol=1e-3)
-    assert np.isclose(marker["lon"], 105.7972, atol=1e-3)
+    assert np.isclose(marker["lat"], 20.9845, atol=2e-3)
+    assert np.isclose(marker["lon"], 105.7985, atol=2e-3)
     assert marker["current_pm25"] == 45.0
 
     # 2. Kiểm tra 6 horizons

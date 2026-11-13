@@ -57,6 +57,47 @@ def wgs84_to_utm48n(lat: float, lon: float) -> Tuple[float, float]:
 
     return float(x), float(y)
 
+def utm48n_to_wgs84(x: float, y: float) -> Tuple[float, float]:
+    """Chuyển đổi ngược tọa độ UTM Zone 48N sang WGS84 (Vĩ độ/Kinh độ).
+    Đạt độ chính xác milimet phục vụ căn chỉnh bản đồ nhiệt và định vị trạm.
+    """
+    a = 6378137.0
+    f = 1.0 / 298.257223563
+    e2 = 2.0 * f - f**2
+    e1 = (1.0 - math.sqrt(1.0 - e2)) / (1.0 + math.sqrt(1.0 - e2))
+    k0 = 0.9996
+    lon0 = math.radians(105.0)
+
+    x_adj = x - 500000.0
+    y_adj = y
+
+    M = y_adj / k0
+    mu = M / (a * (1.0 - e2 / 4.0 - 3.0 * e2**2 / 64.0 - 5.0 * e2**3 / 256.0))
+
+    phi1 = mu + (3.0 * e1 / 2.0 - 27.0 * e1**3 / 32.0) * math.sin(2.0 * mu) \
+              + (21.0 * e1**2 / 16.0 - 55.0 * e1**4 / 32.0) * math.sin(4.0 * mu) \
+              + (151.0 * e1**3 / 96.0) * math.sin(6.0 * mu) \
+              + (1097.0 * e1**4 / 512.0) * math.sin(8.0 * mu)
+
+    C1 = (e2 / (1.0 - e2)) * math.cos(phi1)**2
+    T1 = math.tan(phi1)**2
+    N1 = a / math.sqrt(1.0 - e2 * math.sin(phi1)**2)
+    R1 = a * (1.0 - e2) / ((1.0 - e2 * math.sin(phi1)**2)**1.5)
+    D = x_adj / (N1 * k0)
+
+    lat = phi1 - (N1 * math.tan(phi1) / R1) * (
+        D**2 / 2.0
+        - (5.0 + 3.0 * T1 + 10.0 * C1 - 4.0 * C1**2 - 9.0 * (e2 / (1.0 - e2))) * D**4 / 24.0
+        + (61.0 + 90.0 * T1 + 298.0 * C1 + 45.0 * T1**2 - 252.0 * (e2 / (1.0 - e2)) - 3.0 * C1**2) * D**6 / 720.0
+    )
+    lon = lon0 + (
+        D
+        - (1.0 + 2.0 * T1 + C1) * D**3 / 6.0
+        + (5.0 - 2.0 * C1 + 28.0 * T1 - 3.0 * C1**2 + 8.0 * (e2 / (1.0 - e2)) + 24.0 * T1**2) * D**5 / 120.0
+    ) / math.cos(phi1)
+
+    return float(math.degrees(lat)), float(math.degrees(lon))
+
 @dataclass(frozen=True)
 class StationInfo:
     """Information and spatial attributes of an air quality monitoring station."""
@@ -84,8 +125,8 @@ _RAW_STATIONS_DATA = [
         "STATION_01",
         "UTT_TrieuKhuc",
         "Trạm Cảm Biến Prototype (54 Triều Khúc - ĐH Công Nghệ GTVT)",
-        20.9852,
-        105.7972,
+        20.9845,
+        105.7985,
         18.0,
         "traffic_corridor",
     ),

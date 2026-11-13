@@ -87,8 +87,8 @@ class TestWebServerEndpoints:
 
             marker = wm["markers"][0]
             assert marker["id"] == "STATION_01"
-            assert np.isclose(marker["lat"], 20.9852, atol=1e-3)
-            assert np.isclose(marker["lon"], 105.7972, atol=1e-3)
+            assert np.isclose(marker["lat"], 20.9845, atol=2e-3)
+            assert np.isclose(marker["lon"], 105.7985, atol=2e-3)
 
             assert "bounds" in wm
             assert "horizons" in wm

@@ -721,62 +721,75 @@
             return [127, 29, 29];                    // Nguy hại
         }
 
-        // Khởi tạo bản đồ đa lớp hoàn toàn không cần API Key
+        // Khởi tạo bản đồ đa lớp chuẩn Esri ArcGIS (100% Free, Siêu Tốc, NO API KEY)
         function initMap() {
-            const uttLat = 20.9852;
-            const uttLon = 105.7972;
+            // Tọa độ chuẩn xác khuôn viên trường ĐH Công nghệ Giao thông Vận tải (54 Triều Khúc)
+            const uttLat = 20.9845;
+            const uttLon = 105.7985;
 
             leafletMap = L.map('mapContainer', {
                 zoomControl: true,
                 attributionControl: true
-            }).setView([uttLat, uttLon], 14);
+            }).setView([uttLat, uttLon], 15);
 
-            // 1. Chế Độ Tối Khí Tượng (OSM + High Contrast Dark Filter - 100% Free, NO API KEY)
-            const darkAtmospheric = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            // 1. Vệ Tinh Thực Địa Độ Phân Giải Cao Esri World Imagery (100% Free, NO API KEY)
+            const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
-                className: 'dark-osm-tiles',
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                attribution: 'Tiles &copy; Esri &mdash; World Imagery'
             });
 
-            // 2. Vệ Tinh Độ Phân Giải Cao Esri World Imagery (100% Free, NO API KEY)
-            const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            // 2. Chế Độ Tối Khí Tượng Esri Dark Gray Canvas (100% Free, NO API KEY)
+            const darkBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
                 attribution: 'Tiles &copy; Esri'
             });
-
-            // 3. Bản Đồ Đường Phố Chuẩn OpenStreetMap (100% Free, NO API KEY)
-            const osmStandard = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            const darkRef = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
-                attribution: '&copy; OpenStreetMap contributors'
+                attribution: ''
+            });
+            const darkAtmospheric = L.layerGroup([darkBase, darkRef]);
+
+            // 3. Bản Đồ Đường Phố Chi Tiết Esri World Street Map (100% Free, NO API KEY)
+            const esriStreet = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Tiles &copy; Esri &mdash; Street Map'
             });
 
-            // Thêm lớp mặc định
-            darkAtmospheric.addTo(leafletMap);
+            // 4. Bản Đồ Địa Hình & Khí Hậu Esri World Topo Map (100% Free, NO API KEY)
+            const esriTopo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Tiles &copy; Esri &mdash; Topo Map'
+            });
 
-            // Thêm bộ chọn lớp (Layer Switcher) ở góc trên bên phải
+            // Lớp mặc định: Vệ Tinh Thực Địa (sắc nét quan sát khuôn viên 54 Triều Khúc)
+            esriSatellite.addTo(leafletMap);
+
+            // Thêm bộ chuyển lớp (Layer Switcher) ở góc trên bên phải
             const baseMaps = {
-                "🌙 Chế Độ Tối": darkAtmospheric,
                 "🛰️ Vệ Tinh Thực Địa": esriSatellite,
-                "🗺️ Đường Phố (OSM)": osmStandard
+                "🌙 Chế Độ Tối": darkAtmospheric,
+                "🗺️ Đường Phố (Esri)": esriStreet,
+                "🏔️ Địa Hình (Topo)": esriTopo
             };
             L.control.layers(baseMaps, null, { position: 'topright' }).addTo(leafletMap);
 
             // Thêm Marker Trạm 54 Triều Khúc
             const customIcon = L.divIcon({
                 className: 'station-marker-pin',
-                iconSize: [18, 18],
-                iconAnchor: [9, 9]
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
             });
 
             stationMarker = L.marker([uttLat, uttLon], { icon: customIcon }).addTo(leafletMap);
             stationMarker.bindPopup(`
                 <div style="font-family: var(--font-sans); padding: 4px; color: #1e293b;">
                     <strong style="color: #ea580c; font-size: 13px;">Trạm Thực Nghiệm UTT</strong><br/>
-                    <span style="font-size: 11px; color: #64748b;">54 Triều Khúc, Thanh Xuân Nam, Hà Nội</span>
+                    <span style="font-size: 11px; color: #64748b;">Số 54 Triều Khúc, Thanh Xuân Nam, Hà Nội</span>
                     <hr style="margin: 5px 0; border: none; border-top: 1px solid #cbd5e1;"/>
                     <div style="font-size: 11px; line-height: 1.4;">
-                        • Tọa độ: <strong>20.9852°N, 105.7972°E</strong><br/>
-                        • Cảm biến: <strong>PMS7003 + SHT40 + S8</strong><br/>
+                        • Tọa độ: <strong>20.9845°N, 105.7985°E</strong><br/>
+                        • Vị trí: <strong>Khuôn viên trung tâm ĐH Công Nghệ GTVT</strong><br/>
+                        • Cảm biến: <strong>PMS7003 + SHT40 + S8 + SGP41</strong><br/>
                         • Chu kỳ truyền: <strong>15 phút</strong>
                     </div>
                 </div>
@@ -792,21 +805,27 @@
             const opacityGrid = horizonObj.opacity_grid;
             const bounds = webMapData.bounds;
 
+            if (!bounds || bounds.lat_min === undefined || bounds.lon_min === undefined) return;
+
             const canvas = document.getElementById('offscreenHeatmapCanvas');
             const ctx = canvas.getContext('2d');
             const imgData = ctx.createImageData(25, 25);
 
             for (let r = 0; r < 25; r++) {
+                // Đảo chiều Y để trục Bắc (North) nằm ở đỉnh ảnh Canvas
+                const gridRow = 24 - r;
                 for (let c = 0; c < 25; c++) {
                     const idx = (r * 25 + c) * 4;
-                    const pmVal = pm25Grid[r][c];
-                    const opVal = opacityGrid ? opacityGrid[r][c] : 0.65;
+                    const pmVal = pm25Grid[gridRow][c];
+                    const opVal = opacityGrid ? (opacityGrid[gridRow] ? opacityGrid[gridRow][c] : 0.65) : 0.65;
                     const [red, green, blue] = pm25ToRgb(pmVal);
 
                     imgData.data[idx] = red;
                     imgData.data[idx + 1] = green;
                     imgData.data[idx + 2] = blue;
-                    imgData.data[idx + 3] = Math.floor(Math.max(0.12, Math.min(0.85, opVal)) * 255);
+                    // Độ mờ hạt bụi tán xạ: Đạt độ đậm rõ ràng quanh trạm và mịn dần ra ngoài
+                    const alphaByte = Math.floor(Math.min(0.85, Math.max(0.18, opVal * 0.90)) * 255);
+                    imgData.data[idx + 3] = alphaByte;
                 }
             }
 
@@ -824,7 +843,8 @@
             } else {
                 heatmapOverlay = L.imageOverlay(dataUrl, imageBounds, {
                     opacity: 0.85,
-                    interactive: false
+                    interactive: false,
+                    zIndex: 450
                 }).addTo(leafletMap);
             }
         }
