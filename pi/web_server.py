@@ -106,6 +106,8 @@ class AQServerState:
             calculated_aqi = int(_vectorized_vn_aqi_pm25(np.array([pm25_val]))[0])
             self.current_telemetry["vn_aqi"] = calculated_aqi
             self.current_telemetry["timestamp"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            self.current_telemetry["latency_ms"] = round(elapsed_ms, 2)
+            self.current_telemetry["anomaly"] = res.get("anomaly", {})
             
             # Chuẩn bị dữ liệu map và forecast
             web_map = res.get("web_map", {})

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Quan Trắc & Dự Báo Không Khí Đa Tầng V5.0 | 54 Triều Khúc (UTT)</title>
+    <title>Hệ Thống Quan Trắc & Dự Báo Không Khí Đa Tầng | 54 Triều Khúc (UTT)</title>
     
     <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -478,10 +478,10 @@
     <header>
         <div class="header-container">
             <div class="brand-title">
-                <h1>HỆ THỐNG QUAN TRẮC & DỰ BÁO CHẤT LƯỢNG KHÔNG KHÍ ĐA TẦNG V5.0</h1>
+                <h1>HỆ THỐNG QUAN TRẮC & DỰ BÁO CHẤT LƯỢNG KHÔNG KHÍ ĐA TẦNG</h1>
                 <p>
                     <span>Trường Đại học Công nghệ Giao thông Vận tải (UTT) - Khoa CNTT</span>
-                    <span class="location-tag">📍 Trạm Mẫu: 54 Triều Khúc, Thanh Xuân Nam, Hà Nội</span>
+                    <span class="location-tag">📍 Trạm Thực Nghiệm: 54 Triều Khúc, Thanh Xuân Nam, Hà Nội</span>
                 </p>
             </div>
             <div class="header-actions">
@@ -521,7 +521,7 @@
             <div class="card">
                 <div class="card-header">
                     <span class="card-title">Bụi Mịn PM2.5 / PM10</span>
-                    <span class="card-badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">Laser SDS011</span>
+                    <span class="card-badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">Plantower PMS7003</span>
                 </div>
                 <div class="card-value">
                     <span id="valPm25">--</span>
@@ -537,7 +537,7 @@
             <div class="card">
                 <div class="card-header">
                     <span class="card-title">Khí Tượng Vi Khí Hậu</span>
-                    <span class="card-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">SHT31-D</span>
+                    <span class="card-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">Sensirion SHT40</span>
                 </div>
                 <div class="card-value">
                     <span id="valTemp">--</span>
@@ -553,7 +553,7 @@
             <div class="card">
                 <div class="card-header">
                     <span class="card-title">Khí Độc & Hiệu Ứng Nhà Kính</span>
-                    <span class="card-badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">SGP30</span>
+                    <span class="card-badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">SenseAir S8 + SGP41</span>
                 </div>
                 <div class="card-value">
                     <span id="valCo2">--</span>
@@ -572,7 +572,7 @@
             <div class="map-section card">
                 <div class="card-header" style="margin-bottom: 0;">
                     <div>
-                        <span class="card-title">Bản Đồ Phân Bố Không Gian Đa Tầng V5.0</span>
+                        <span class="card-title">Bản Đồ Phân Bố Nồng Độ Bụi Mịn PM2.5</span>
                         <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
                             Mô hình Anisotropic Gaussian Plume vi khí hậu quanh tọa độ 54 Triều Khúc
                         </div>
@@ -615,11 +615,11 @@
                     <div>
                         <span class="card-title">Dự Báo Xu Hướng Bụi Mịn 24 Giờ Tới</span>
                         <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
-                            Mô hình ResMLP-TinyML với dải độ tin cậy P10 - P90
+                            Mô hình Chuỗi Thời Gian GRU với dải độ tin cậy P10 - P90
                         </div>
                     </div>
                     <span class="card-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
-                        AI Inference: &lt; 20ms
+                        Gateway Inference: &lt; 5ms
                     </span>
                 </div>
 
@@ -660,31 +660,31 @@
                 <span class="diag-value" style="color: #10b981;">
                     ✓ 30 Mẫu Burst / 15 Phút • Lọc 20% Trimmed Mean
                 </span>
-                <span style="font-size: 0.78rem; color: var(--text-muted);">Loại bỏ 3 xung đột biến cực đại & 3 sụt áp cực tiểu (Heap RAM = 0 Byte)</span>
+                <span style="font-size: 0.78rem; color: var(--text-muted);">Loại bỏ 3 xung nhiễu cực đại & 3 giá trị đáy dị biệt (Heap RAM = 0 Byte)</span>
             </div>
 
             <div class="diag-item">
-                <span class="diag-label">Chu Kỳ Tiết Kiệm Năng Lượng</span>
+                <span class="diag-label">Chu Kỳ Năng Lượng Node ESP32-S3</span>
                 <span class="diag-value">
-                    <span>Tỷ lệ Ngủ Sâu: <strong>99.99%</strong></span>
-                    <span class="diag-code">Duty Cycle: 15 Phút</span>
+                    <span>Tỷ lệ Ngủ Sâu: <strong>96.44%</strong> (868s/900s)</span>
+                    <span class="diag-code">FSM Duty Cycle: 15 Phút</span>
                 </span>
-                <span style="font-size: 0.78rem; color: var(--text-muted);">Độ trễ tính toán AI trên Raspberry Pi 5: <span id="valPiLatency">16.4</span> ms</span>
+                <span style="font-size: 0.78rem; color: var(--text-muted);">Thời gian đo & TinyML: 32s • Trễ Pi Gateway: <span id="valPiLatency">--</span> ms</span>
             </div>
 
             <div class="diag-item">
-                <span class="diag-label">Chẩn Đoán Dị Thường Vi Khí Hậu</span>
+                <span class="diag-label">Chẩn Đoán Dị Thường Vi Khí Hậu (Autoencoder)</span>
                 <span class="diag-value" id="valAnomalyStatus" style="color: #10b981;">
-                    ● Trạng thái Bình Thường (Zero Outlier)
+                    ● Trạng thái Bình Thường
                 </span>
-                <span style="font-size: 0.78rem; color: var(--text-muted);">Tự động loại bỏ độ ẩm bão hòa & nhiễu cảm biến quang học</span>
+                <span style="font-size: 0.78rem; color: var(--text-muted);">Kiểm định ngưỡng động 3-Sigma kết hợp QCVN 05:2023</span>
             </div>
         </section>
     </main>
 
     <!-- Footer -->
     <footer>
-        <p>Hệ Thống Quan Trắc & Dự Báo Không Khí Tự Động Hóa • Nghiên Cứu Khoa Học & Triển Khai Thực Nghiệm UTT 2026</p>
+        <p>Hệ Thống Quan Trắc & Dự Báo Chất Lượng Không Khí • Nghiên Cứu Khoa Học & Triển Khai Thực Nghiệm UTT 2026</p>
     </footer>
 
     <!-- Hidden Offscreen Canvas for Fast Dynamic Heatmap Rendering -->
@@ -953,6 +953,28 @@
                 aqiBadge.style.borderColor = `${getAqiColor(aqi)}50`;
                 document.getElementById('aqiAdvice').textContent = cat.advice;
                 document.getElementById('telemetryTime').textContent = new Date().toLocaleTimeString('vi-VN');
+
+                // Cập nhật độ trễ tính toán AI trên Pi Gateway
+                if (data.latency_ms !== undefined) {
+                    const latEl = document.getElementById('valPiLatency');
+                    if (latEl) latEl.textContent = data.latency_ms;
+                }
+
+                // Cập nhật chẩn đoán dị thường Autoencoder
+                if (data.anomaly) {
+                    const anom = data.anomaly;
+                    const anomEl = document.getElementById('valAnomalyStatus');
+                    if (anomEl) {
+                        if (anom.is_anomaly) {
+                            anomEl.innerHTML = `⚠️ Dị thường: ${anom.signature_class_name || 'Phát hiện bất thường'}`;
+                            anomEl.style.color = '#ef4444';
+                        } else {
+                            const clsName = anom.signature_class_name ? ` (${anom.signature_class_name})` : '';
+                            anomEl.innerHTML = `● Trạng thái Bình Thường${clsName}`;
+                            anomEl.style.color = '#10b981';
+                        }
+                    }
+                }
 
             } catch (err) {
                 console.error('Lỗi tải dữ liệu telemetry:', err);
