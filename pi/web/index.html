@@ -300,12 +300,6 @@
             justify-content: space-between;
         }
 
-        /* AQI Main Card Styling */
-        .card-aqi {
-            border-left: 4px solid var(--brand-orange);
-            background: linear-gradient(135deg, rgba(249, 115, 22, 0.05) 0%, var(--bg-card) 60%);
-        }
-
         .aqi-pill {
             font-size: 0.75rem;
             font-weight: 700;
@@ -526,7 +520,7 @@
         <!-- 4 Key Telemetry Cards -->
         <section class="telemetry-grid">
             <!-- Card 1: VN-AQI Alert Focus -->
-            <div class="card card-aqi">
+            <div class="card">
                 <div class="card-header-row">
                     <span class="card-title">Chỉ Số Tổng Hợp VN-AQI</span>
                     <span class="aqi-pill" id="badgeAqiCategory" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">Đang tải</span>
@@ -968,7 +962,7 @@
                 aqiBadge.style.background = `${getAqiColor(aqi)}25`;
                 aqiBadge.style.color = getAqiColor(aqi);
                 document.getElementById('aqiAdvice').textContent = cat.advice;
-                document.getElementById('telemetryTime').textContent = new Date().toLocaleTimeString('vi-VN');
+                updateLiveClock();
 
             } catch (err) {
                 console.error('Lỗi tải dữ liệu telemetry:', err);
@@ -1040,11 +1034,22 @@
             }
         }
 
+        // Cập nhật đồng hồ thời gian thực mỗi giây
+        function updateLiveClock() {
+            const el = document.getElementById('telemetryTime');
+            if (el) {
+                el.textContent = new Date().toLocaleTimeString('vi-VN');
+            }
+        }
+
         // Khởi động
         window.addEventListener('DOMContentLoaded', () => {
             initMap();
             initForecastChart();
             
+            updateLiveClock();
+            setInterval(updateLiveClock, 1000);
+
             fetchTelemetry();
             fetchMapData();
             fetchForecastData();
