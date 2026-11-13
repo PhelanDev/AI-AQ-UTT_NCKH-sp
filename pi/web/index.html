@@ -370,34 +370,36 @@
 
         .horizon-buttons {
             display: flex;
-            background: var(--bg-surface);
+            background: #1E293B;
             padding: 3px;
             border-radius: 6px;
-            border: 1px solid var(--border-hairline);
-            gap: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            gap: 2px;
         }
 
         .btn-horizon {
             background: transparent;
             border: none;
-            color: var(--text-muted);
+            color: #94A3B8;
             padding: 5px 12px;
             border-radius: 4px;
-            font-size: 0.78rem;
-            font-weight: 600;
+            font-size: 0.76rem;
+            font-weight: 500;
             font-family: var(--font-mono);
             cursor: pointer;
-            transition: all 0.12s ease;
+            transition: all 0.15s ease;
         }
 
         .btn-horizon:hover {
-            color: var(--text-heading);
+            color: #F8FAFC;
             background: rgba(255, 255, 255, 0.06);
         }
 
         .btn-horizon.active {
-            background: var(--brand-orange);
-            color: #ffffff;
+            background: rgba(255, 255, 255, 0.15);
+            color: #F8FAFC;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+            font-weight: 600;
         }
 
         #mapContainer {
@@ -405,25 +407,60 @@
             height: 530px;
             border-radius: 8px;
             border: 1px solid var(--border-hairline);
-            background: #0f141c;
+            background: #090A0F;
             position: relative;
             overflow: hidden;
         }
 
-        /* CSS Filter for High-Contrast Dark Atmospheric OSM Tiles */
-        .dark-osm-tiles {
-            filter: brightness(0.7) invert(1) contrast(2.3) hue-rotate(200deg) saturate(0.2) brightness(0.85);
+        /* Leaflet Controls Styling with Glassmorphism */
+        .leaflet-bar {
+            border: none !important;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+            border-radius: 6px !important;
+            overflow: hidden;
         }
 
-        /* Leaflet Controls Styling */
-        .leaflet-control-layers {
-            background: var(--bg-surface) !important;
-            color: var(--text-body) !important;
-            border: 1px solid var(--border-hairline) !important;
-            border-radius: 6px !important;
-            font-size: 0.78rem !important;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+        .leaflet-bar a {
+            background: rgba(18, 20, 28, 0.82) !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            color: #94A3B8 !important;
+            transition: all 0.15s ease;
         }
+
+        .leaflet-bar a:hover {
+            background: rgba(30, 41, 59, 0.95) !important;
+            color: #F8FAFC !important;
+        }
+
+        .leaflet-control-attribution {
+            background: transparent !important;
+            color: rgba(148, 163, 184, 0.3) !important;
+            font-size: 0.65rem !important;
+            opacity: 0.35;
+            transition: opacity 0.2s ease;
+        }
+
+        .leaflet-control-attribution:hover {
+            opacity: 0.85;
+        }
+
+        .leaflet-control-attribution a {
+            color: rgba(148, 163, 184, 0.4) !important;
+        }
+
+        .leaflet-control-layers {
+            background: rgba(18, 20, 28, 0.85) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+            color: var(--text-body) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-radius: 6px !important;
+            font-size: 0.75rem !important;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+        }
+
         .leaflet-control-layers-base label {
             color: var(--text-body) !important;
             margin-bottom: 2px;
@@ -433,14 +470,15 @@
             position: absolute;
             bottom: 16px;
             right: 16px;
-            background: rgba(17, 23, 34, 0.94);
+            background: rgba(18, 20, 28, 0.88);
             border: 1px solid var(--border-hairline);
             border-radius: 6px;
             padding: 8px 12px;
             z-index: 1000;
-            backdrop-filter: blur(6px);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             font-size: 0.72rem;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
         }
 
         .legend-title {
@@ -466,12 +504,12 @@
 
         /* Marker Pin */
         .station-marker-pin {
-            width: 18px;
-            height: 18px;
-            background: var(--brand-orange);
-            border: 2px solid #ffffff;
+            width: 14px;
+            height: 14px;
+            background: #FFFFFF;
+            border: 3px solid #10B981;
             border-radius: 50%;
-            box-shadow: 0 0 10px rgba(249, 115, 22, 0.8);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
         }
 
         /* Forecast Card */
@@ -807,14 +845,14 @@
                 attribution: 'Tiles &copy; Esri &mdash; Topo Map'
             });
 
-            // Lớp mặc định: Vệ Tinh Thực Địa (sắc nét quan sát khuôn viên 54 Triều Khúc)
-            esriSatellite.addTo(leafletMap);
+            // Lớp mặc định: Chế Độ Tối Khí Tượng (tối giản, làm nổi bật đám mây khói bụi PM2.5)
+            darkAtmospheric.addTo(leafletMap);
 
             // Thêm bộ chuyển lớp (Layer Switcher) ở góc trên bên phải
             const baseMaps = {
-                "Vệ Tinh Thực Địa": esriSatellite,
-                "Chế Độ Tối": darkAtmospheric,
+                "Chế Độ Tối (Mặc định)": darkAtmospheric,
                 "Bản Đồ Đường Phố": esriStreet,
+                "Vệ Tinh Thực Địa": esriSatellite,
                 "Bản Đồ Địa Hình": esriTopo
             };
             L.control.layers(baseMaps, null, { position: 'topright' }).addTo(leafletMap);
@@ -822,8 +860,8 @@
             // Thêm Marker Trạm 54 Triều Khúc
             const customIcon = L.divIcon({
                 className: 'station-marker-pin',
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
+                iconSize: [14, 14],
+                iconAnchor: [7, 7]
             });
 
             stationMarker = L.marker([uttLat, uttLon], { icon: customIcon }).addTo(leafletMap);
@@ -922,43 +960,46 @@
                     labels: labels,
                     datasets: [
                         {
-                            label: 'Dự Báo PM2.5 (µg/m³)',
+                            label: 'Dự Báo GRU',
                             data: [],
-                            borderColor: '#f97316',
-                            backgroundColor: 'rgba(249, 115, 22, 0.12)',
+                            borderColor: '#F97316',
                             borderWidth: 2.2,
-                            pointRadius: 2.5,
-                            pointHoverRadius: 5,
+                            pointRadius: 2.0,
+                            pointHoverRadius: 4.5,
                             tension: 0.35,
-                            fill: false
+                            fill: false,
+                            pointStyle: 'circle'
                         },
                         {
-                            label: 'Dải Tin Cậy P90 (Trần)',
+                            label: 'Dải Tin Cậy P90',
                             data: [],
-                            borderColor: 'rgba(251, 146, 60, 0.4)',
-                            borderDash: [4, 4],
-                            borderWidth: 1.2,
+                            borderColor: 'rgba(148, 163, 184, 0.35)',
+                            borderDash: [3, 3],
+                            borderWidth: 1.0,
                             pointRadius: 0,
-                            fill: false
+                            fill: false,
+                            pointStyle: 'line'
                         },
                         {
-                            label: 'Dải Tin Cậy P10 (Sàn)',
+                            label: 'Dải Tin Cậy P10',
                             data: [],
-                            borderColor: 'rgba(251, 146, 60, 0.4)',
-                            borderDash: [4, 4],
-                            borderWidth: 1.2,
+                            borderColor: 'rgba(148, 163, 184, 0.35)',
+                            borderDash: [3, 3],
+                            borderWidth: 1.0,
                             pointRadius: 0,
-                            backgroundColor: 'rgba(249, 115, 22, 0.08)',
-                            fill: '-1'
+                            backgroundColor: 'rgba(249, 115, 22, 0.06)',
+                            fill: '-1',
+                            pointStyle: 'line'
                         },
                         {
-                            label: 'QCVN 05 24h (50 µg/m³)',
+                            label: 'QCVN 05 (50 µg/m³)',
                             data: Array(24).fill(50),
-                            borderColor: 'rgba(239, 68, 68, 0.75)',
-                            borderDash: [6, 6],
+                            borderColor: 'rgba(239, 68, 68, 0.65)',
+                            borderDash: [6, 4],
                             borderWidth: 1.2,
                             pointRadius: 0,
-                            fill: false
+                            fill: false,
+                            pointStyle: 'line'
                         }
                     ]
                 },
@@ -971,34 +1012,60 @@
                     },
                     plugins: {
                         legend: {
+                            position: 'top',
+                            align: 'end',
                             labels: {
-                                color: '#94a3b8',
-                                font: { size: 11, family: '-apple-system, sans-serif' },
-                                boxWidth: 14
+                                color: '#94A3B8',
+                                font: { size: 11, family: 'var(--font-sans)' },
+                                usePointStyle: true,
+                                boxWidth: 6,
+                                boxHeight: 6,
+                                padding: 20
                             }
                         },
                         tooltip: {
-                            backgroundColor: '#161f2e',
-                            titleColor: '#f97316',
-                            bodyColor: '#f8fafc',
+                            backgroundColor: '#12141C',
+                            titleColor: '#F97316',
+                            bodyColor: '#F8FAFC',
                             borderColor: 'rgba(255, 255, 255, 0.1)',
                             borderWidth: 1,
-                            padding: 10
+                            padding: 10,
+                            titleFont: { family: 'var(--font-mono)' },
+                            bodyFont: { family: 'var(--font-mono)' }
                         }
                     },
                     scales: {
                         x: {
-                            grid: { color: 'rgba(255, 255, 255, 0.04)' },
-                            ticks: { color: '#8090a7', font: { size: 10, family: 'monospace' } }
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#64748B',
+                                font: { size: 10, family: 'var(--font-mono)' },
+                                maxRotation: 0,
+                                minRotation: 0,
+                                callback: function(val, index) {
+                                    const hour = index + 1;
+                                    return (hour % 3 === 0) ? `+${hour}h` : '';
+                                }
+                            }
                         },
                         y: {
-                            grid: { color: 'rgba(255, 255, 255, 0.04)' },
-                            ticks: { color: '#8090a7', font: { size: 10, family: 'monospace' } },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                borderDash: [4, 4],
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#64748B',
+                                font: { size: 10, family: 'var(--font-mono)' },
+                                maxTicksLimit: 6
+                            },
                             title: {
                                 display: true,
-                                text: 'PM2.5 (µg/m³)',
-                                color: '#8090a7',
-                                font: { size: 11 }
+                                text: 'Nồng Độ PM2.5 (µg/m³)',
+                                color: '#64748B',
+                                font: { size: 11, family: 'var(--font-sans)' }
                             }
                         }
                     }
