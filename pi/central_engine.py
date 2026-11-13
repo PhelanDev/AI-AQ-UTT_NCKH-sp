@@ -943,6 +943,7 @@ class CentralAIEngine:
             wind_vector=[wind_u, wind_v],
             station_ids=active_station_ids,
             grid_size=25,
+            radius_m=500.0 if n_active == 1 else 1000.0,
         )
 
         st_aqis = _vectorized_vn_aqi_pm25(st_mat[:, 0])

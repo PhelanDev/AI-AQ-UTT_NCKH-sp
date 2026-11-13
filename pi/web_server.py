@@ -53,8 +53,8 @@ class AQServerState:
         self.current_telemetry = {
             "station_id": "STATION_01",
             "station_name": "Trạm Thử Nghiệm UTT - 54 Triều Khúc, Thanh Xuân Nam, Hà Nội",
-            "latitude": 20.9845,
-            "longitude": 105.7985,
+            "latitude": 20.983688,
+            "longitude": 105.797477,
             "pm25": 38.5,
             "pm10": 52.0,
             "vn_aqi": 108,
