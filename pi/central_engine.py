@@ -893,10 +893,11 @@ class CentralAIEngine:
                 f_out = f_t.cpu().numpy()
                 r_out = r_t.cpu().numpy()
 
-        pm25_forecasts = np.maximum(0.0, f_out[:, :, 0])
-        aqi_forecasts = np.maximum(0.0, f_out[:, :, 1])
+        pm25_phys = f_out[:, :, 0] * float(self.feat_denom_16[0]) + float(self.feat_min_16[0])
+        pm25_forecasts = np.maximum(0.0, pm25_phys)
+        aqi_head = f_out[:, :, 1] * float(self.feat_denom_16[15]) + float(self.feat_min_16[15])
         aqi_calc = _vectorized_vn_aqi_pm25(pm25_forecasts)
-        aqi_forecasts = 0.5 * aqi_forecasts + 0.5 * aqi_calc
+        aqi_forecasts = np.maximum(0.0, 0.5 * aqi_head + 0.5 * aqi_calc)
 
         recon_errors = np.mean((feat_norm[:, -1, :] - r_out) ** 2, axis=1)
         anom_score = float(np.max(recon_errors))

@@ -194,3 +194,16 @@ def test_v5_05_central_engine_dynamic_scaling_3_and_8_stations():
     assert np.all(p10 >= 0.0)
     assert np.all(p10 <= p50 + 1e-5)
     assert np.all(p50 <= p90 + 1e-5)
+
+
+def test_forecast_values_denormalized_physical_scale():
+    """Kiểm tra dự báo PM2.5 và VN-AQI được giải chuẩn hóa về đúng thang vật lý (không bị bẹp ở ~0.06)."""
+    engine = CentralAIEngine()
+    hist_24 = np.ones((24, 1), dtype=np.float32) * 35.0
+    curr_6d = np.array([35.0, 48.0, 25.0, 75.0, 420.0, 100.0], dtype=np.float32)
+    res = engine.process_telemetry_frame(hist_24, curr_6d)
+    fc = res["forecast_24h"]
+    assert fc["pm25_pred"][0] >= 10.0, f"PM2.5 dự báo bị bẹp: {fc['pm25_pred'][0]}"
+    assert fc["pm25_pred"][0] <= 150.0
+    assert fc["pm25_p10"][0] <= fc["pm25_pred"][0] <= fc["pm25_p90"][0]
+
