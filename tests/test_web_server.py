@@ -85,6 +85,19 @@ class TestWebServerEndpoints:
             assert "Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5" in html
             assert "min-height: 40px" in html
 
+    def test_mobile_chart_scrubber_and_layout_optimization(self, test_server):
+        """Kiểm tra có thanh Scrubber HUD và cấu hình tối ưu trục biểu đồ trên mobile."""
+        url = f"{test_server}/"
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=3.0) as resp:
+            html = resp.read().decode("utf-8")
+            assert "forecastHudBar" in html or "chart-hud-bar" in html
+            assert "text-wrap: balance" in html
+            assert "hudHourChip" in html
+            assert "hudPm25Val" in html
+            assert "hudAqiPill" in html
+            assert "disableClickPropagation" in html
+
     def test_api_status(self, test_server):
         """Kiểm tra API trạng thái hệ thống: /api/status."""
         url = f"{test_server}/api/status"
