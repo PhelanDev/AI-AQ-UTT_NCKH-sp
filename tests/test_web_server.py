@@ -82,7 +82,7 @@ class TestWebServerEndpoints:
             assert "overflow-x: clip" in html or "overflow-x: hidden" in html
             assert "@media (max-width: 768px)" in html or "@media (max-width: 640px)" in html
             assert "scrollWheelZoom: false" in html or "scrollWheelZoom" in html
-            assert "Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5" in html
+            assert "Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 · mobile-ergonomics: passed · web-guidelines: verified" in html
             assert "min-height: 40px" in html
 
     def test_mobile_chart_scrubber_and_layout_optimization(self, test_server):
