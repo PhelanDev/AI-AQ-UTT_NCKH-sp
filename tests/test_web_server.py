@@ -41,6 +41,16 @@ class TestWebServerEndpoints:
             assert "VN-AQI" in html_body
             assert "leaflet" in html_body.lower()
 
+    def test_theme_system_tokens_present(self, test_server):
+        """Kiểm tra mã nguồn HTML có đầy đủ khai báo token chế độ sáng và nhận diện hệ thống."""
+        url = f"{test_server}/"
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=3.0) as resp:
+            html = resp.read().decode("utf-8")
+            assert 'data-theme' in html
+            assert '--bg-canvas' in html
+            assert 'prefers-color-scheme' in html
+
     def test_api_status(self, test_server):
         """Kiểm tra API trạng thái hệ thống: /api/status."""
         url = f"{test_server}/api/status"
