@@ -659,7 +659,50 @@
         .forecast-card {
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 12px;
+        }
+
+        .card-subtitle-balanced {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+            text-wrap: balance;
+        }
+
+        .chart-hud-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-hairline);
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            color: var(--text-body);
+            min-height: 34px;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        [data-theme="light"] .chart-hud-bar {
+            background: rgba(15, 23, 42, 0.03);
+        }
+
+        .hud-chip {
+            background: rgba(249, 115, 22, 0.15);
+            color: #F97316;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .hud-pill {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            margin-left: auto;
+            font-size: 0.72rem;
+            transition: all 0.2s ease;
         }
 
         .chart-box {
@@ -785,6 +828,11 @@
             }
             .chart-box {
                 height: 290px;
+            }
+            .chart-hud-bar {
+                padding: 5px 10px;
+                font-size: 0.72rem;
+                gap: 6px;
             }
             .map-scale-legend {
                 position: static;
@@ -1002,11 +1050,21 @@
             <div class="card forecast-card">
                 <div class="card-header-row" style="margin-bottom: 0;">
                     <div>
-                        <span class="card-title">Dự Báo Bụi Mịn 24 Giờ Tới</span>
-                        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
-                            Biểu đồ nồng độ PM2.5 dự báo theo chuỗi thời gian kèm ngưỡng an toàn QCVN
+                        <div style="display: flex; align-items: baseline; gap: 8px;">
+                            <span class="card-title">Dự Báo Bụi Mịn 24 Giờ Tới</span>
+                            <span class="sensor-tag" style="font-size: 0.68rem;">(µg/m³)</span>
+                        </div>
+                        <div class="card-subtitle-balanced">
+                            Dự báo chuỗi thời gian 24 giờ &amp; Ngưỡng an toàn QCVN
                         </div>
                     </div>
+                </div>
+
+                <!-- Scrubber HUD Bar: Hiển thị thông số mốc giờ khi chạm lướt mà không che đồ thị -->
+                <div class="chart-hud-bar" id="forecastHudBar">
+                    <span class="hud-chip" id="hudHourChip">+1h Tới</span>
+                    <span class="hud-stat" id="hudPm25Stat">PM2.5: <strong id="hudPm25Val">--</strong> µg/m³</span>
+                    <span class="hud-pill" id="hudAqiPill">Đang tải</span>
                 </div>
 
                 <div class="chart-box">
@@ -1151,6 +1209,7 @@
 
             // 2. Cập nhật màu sắc biểu đồ Chart.js mà không làm mất dữ liệu
             if (forecastChart) {
+                const isMobile = window.innerWidth <= 768;
                 const tickColor = isDark ? '#64748B' : '#475569';
                 const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.06)';
                 const tooltipBg = isDark ? '#12141C' : '#FFFFFF';
@@ -1162,13 +1221,23 @@
                 forecastChart.options.scales.x.ticks.color = tickColor;
                 forecastChart.options.scales.y.ticks.color = tickColor;
                 forecastChart.options.scales.y.title.color = tickColor;
+                forecastChart.options.scales.y.title.display = !isMobile;
                 forecastChart.options.scales.y.grid.color = gridColor;
 
+                forecastChart.options.plugins.tooltip.enabled = !isMobile;
                 forecastChart.options.plugins.tooltip.backgroundColor = tooltipBg;
                 forecastChart.options.plugins.tooltip.titleColor = tooltipTitle;
                 forecastChart.options.plugins.tooltip.bodyColor = tooltipBody;
                 forecastChart.options.plugins.tooltip.borderColor = tooltipBorder;
                 forecastChart.options.plugins.legend.labels.color = legendColor;
+
+                if (!forecastChart.options.layout) forecastChart.options.layout = {};
+                forecastChart.options.layout.padding = {
+                    left: isMobile ? 2 : 4,
+                    right: 14,
+                    top: 4,
+                    bottom: 4
+                };
 
                 if (forecastChart.data.datasets && forecastChart.data.datasets.length > 0) {
                     forecastChart.data.datasets[0].pointBorderColor = isDark ? '#090A0F' : '#FFFFFF';
@@ -1319,6 +1388,13 @@
                     </div>
                 </div>
             `);
+
+            // Chặn sự kiện click/touch từ nút căn giữa lan truyền vào bản đồ Leaflet
+            const btnCenter = document.getElementById('btnCenterStation');
+            if (btnCenter) {
+                L.DomEvent.disableClickPropagation(btnCenter);
+                L.DomEvent.disableScrollPropagation(btnCenter);
+            }
         }
 
         // Vẽ lớp phủ nhiệt độ bụi tán xạ lên Canvas và gán vào Leaflet
@@ -1389,10 +1465,42 @@
             renderHeatmapOverlay();
         }
 
+        // Phân loại PM2.5 theo chuẩn QCVN 05:2023/BTNMT cho Scrubber HUD Bar
+        function getPm25Classification(val) {
+            if (val > 150) return { label: 'Nguy Hại', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)' };
+            if (val > 80) return { label: 'Xấu', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)' };
+            if (val > 50) return { label: 'Kém', color: '#F97316', bg: 'rgba(249, 115, 22, 0.15)' };
+            if (val > 25) return { label: 'Trung Bình', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)' };
+            return { label: 'Tốt', color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)' };
+        }
+
+        // Cập nhật giá trị hiển thị trên thanh Scrubber HUD Bar khi rê chuột hoặc chạm lướt
+        function updateForecastHud(index, val) {
+            const hourChip = document.getElementById('hudHourChip');
+            const pm25Val = document.getElementById('hudPm25Val');
+            const aqiPill = document.getElementById('hudAqiPill');
+            if (!hourChip || !pm25Val || !aqiPill) return;
+
+            hourChip.textContent = `+${index + 1}h Tới`;
+            if (val !== undefined && val !== null && !isNaN(val)) {
+                pm25Val.textContent = Number(val).toFixed(1);
+                const cls = getPm25Classification(Number(val));
+                aqiPill.textContent = cls.label;
+                aqiPill.style.color = cls.color;
+                aqiPill.style.backgroundColor = cls.bg;
+            } else {
+                pm25Val.textContent = '--';
+                aqiPill.textContent = 'Đang tải';
+                aqiPill.style.color = 'var(--text-muted)';
+                aqiPill.style.backgroundColor = 'transparent';
+            }
+        }
+
         // Biểu đồ dự báo chuỗi thời gian 24 giờ chuẩn khí tượng
         function initForecastChart() {
             const ctx = document.getElementById('forecastChart').getContext('2d');
             const labels = Array.from({ length: 24 }, (_, i) => `+${i + 1}h`);
+            const isMobile = window.innerWidth <= 768;
 
             // Gradient đổ bóng mềm mại dưới đường dự báo chuẩn giao diện quan trắc
             const gradient = ctx.createLinearGradient(0, 0, 0, 260);
@@ -1435,9 +1543,26 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: isMobile ? 2 : 4,
+                            right: 14,
+                            top: 4,
+                            bottom: 4
+                        }
+                    },
                     interaction: {
                         mode: 'index',
                         intersect: false
+                    },
+                    onHover: (event, elements) => {
+                        if (elements && elements.length > 0) {
+                            const idx = elements[0].index;
+                            if (forecastChart && forecastChart.data.datasets[0] && forecastChart.data.datasets[0].data.length > idx) {
+                                const val = forecastChart.data.datasets[0].data[idx];
+                                updateForecastHud(idx, val);
+                            }
+                        }
                     },
                     plugins: {
                         legend: {
@@ -1453,6 +1578,7 @@
                             }
                         },
                         tooltip: {
+                            enabled: !isMobile,
                             backgroundColor: '#12141C',
                             titleColor: '#F97316',
                             bodyColor: '#F8FAFC',
@@ -1505,7 +1631,7 @@
                                 maxTicksLimit: 6
                             },
                             title: {
-                                display: true,
+                                display: !isMobile,
                                 text: 'Nồng Độ PM2.5 (µg/m³)',
                                 color: '#64748B',
                                 font: { size: 11, family: 'var(--font-sans)' }
@@ -1514,6 +1640,28 @@
                     }
                 }
             });
+
+            // Gắn bộ bắt sự kiện cảm ứng chạm/vuốt (Scrubber) mượt mà cho mobile
+            const chartCanvas = document.getElementById('forecastChart');
+            if (chartCanvas) {
+                const handleScrubTouch = (evt) => {
+                    if (!forecastChart || !forecastChart.data.datasets[0] || !forecastChart.data.datasets[0].data.length) return;
+                    const rect = chartCanvas.getBoundingClientRect();
+                    const touch = evt.touches ? evt.touches[0] : evt;
+                    const x = touch.clientX - rect.left;
+                    const chartArea = forecastChart.chartArea;
+                    if (!chartArea) return;
+                    const clampedX = Math.max(chartArea.left, Math.min(x, chartArea.right));
+                    const ratio = (clampedX - chartArea.left) / (chartArea.right - chartArea.left);
+                    const totalPoints = forecastChart.data.datasets[0].data.length;
+                    const idx = Math.min(totalPoints - 1, Math.max(0, Math.round(ratio * (totalPoints - 1))));
+                    const val = forecastChart.data.datasets[0].data[idx];
+                    updateForecastHud(idx, val);
+                };
+                chartCanvas.addEventListener('touchmove', handleScrubTouch, { passive: true });
+                chartCanvas.addEventListener('touchstart', handleScrubTouch, { passive: true });
+            }
+
             applyResolvedVisuals(document.documentElement.getAttribute('data-theme') || 'dark');
         }
 
@@ -1626,9 +1774,10 @@
                 if (!res.ok) return;
                 const data = await res.json();
 
-                if (forecastChart && data.pm25_pred) {
+                if (forecastChart && data.pm25_pred && data.pm25_pred.length > 0) {
                     forecastChart.data.datasets[0].data = data.pm25_pred;
                     forecastChart.update();
+                    updateForecastHud(0, data.pm25_pred[0]);
                 }
             } catch (err) {
                 console.error('Lỗi tải dữ liệu dự báo:', err);
@@ -1677,6 +1826,19 @@
 
             window.addEventListener('resize', () => {
                 if (leafletMap) leafletMap.invalidateSize();
+                if (forecastChart) {
+                    const isMobile = window.innerWidth <= 768;
+                    forecastChart.options.scales.y.title.display = !isMobile;
+                    forecastChart.options.plugins.tooltip.enabled = !isMobile;
+                    if (!forecastChart.options.layout) forecastChart.options.layout = {};
+                    forecastChart.options.layout.padding = {
+                        left: isMobile ? 2 : 4,
+                        right: 14,
+                        top: 4,
+                        bottom: 4
+                    };
+                    forecastChart.update('none');
+                }
             });
             
             updateLiveClock();
