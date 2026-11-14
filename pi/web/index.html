@@ -107,6 +107,11 @@
             padding: 0;
         }
 
+        html, body {
+            overflow-x: clip;
+            width: 100%;
+        }
+
         body {
             font-family: var(--font-sans);
             background-color: var(--bg-canvas);
@@ -114,7 +119,6 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow-x: hidden;
             line-height: 1.5;
         }
 
@@ -315,9 +319,17 @@
             }
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 640px) {
             .telemetry-grid {
                 grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .card {
+                padding: 14px 16px;
+                border-radius: 8px;
+            }
+            .card-big-value {
+                font-size: clamp(2rem, 9vw, 2.5rem);
             }
         }
 
@@ -656,6 +668,107 @@
             border-radius: 50%;
             background: var(--aqi-good);
         }
+
+        /* ==========================================================================
+           RESPONSIVE MOBILE BREAKPOINTS (320px - 768px)
+           Quy chuẩn giao diện Hallmark & Chống tràn viền triệt để
+           ========================================================================== */
+        @media (max-width: 768px) {
+            header {
+                padding: 10px 16px;
+            }
+            .header-container {
+                gap: 10px;
+            }
+            .station-brand {
+                gap: 10px;
+            }
+            .station-badge-icon {
+                width: 32px;
+                height: 32px;
+            }
+            .brand-meta h1 {
+                font-size: 0.95rem;
+            }
+            .brand-meta p {
+                font-size: 0.72rem;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 2px;
+            }
+            .header-controls {
+                width: 100%;
+                justify-content: space-between;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            .telemetry-indicator {
+                width: 100%;
+                justify-content: center;
+                order: -1;
+            }
+            .btn-sync, .btn-theme-toggle {
+                min-height: 44px;
+                padding: 8px 12px;
+                flex: 1 1 auto;
+                justify-content: center;
+            }
+            main {
+                padding: 14px 16px;
+                gap: 16px;
+            }
+            .map-toolbar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .horizon-buttons {
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                flex-wrap: nowrap;
+                padding: 4px;
+            }
+            .horizon-buttons::-webkit-scrollbar {
+                display: none;
+            }
+            .btn-horizon {
+                min-height: 38px;
+                padding: 6px 14px;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+            #mapContainer {
+                height: 350px;
+            }
+            .chart-box {
+                height: 290px;
+            }
+            .map-scale-legend {
+                bottom: 8px;
+                right: 8px;
+                padding: 6px 10px;
+                font-size: 0.68rem;
+            }
+            .legend-gradient-bar {
+                width: 140px;
+            }
+            footer {
+                padding: 14px 16px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .footer-status-bar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+            .footer-status-bar > span:not(.status-node-item) {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
@@ -926,6 +1039,7 @@
         }
 
         function updateThemeToggleUI(mode) {
+            const btn = document.getElementById('btnThemeToggle');
             const iconSys = document.getElementById('iconThemeSystem');
             const iconLight = document.getElementById('iconThemeLight');
             const iconDark = document.getElementById('iconThemeDark');
@@ -936,9 +1050,25 @@
             iconLight.style.display = (mode === 'light') ? 'inline-block' : 'none';
             iconDark.style.display = (mode === 'dark') ? 'inline-block' : 'none';
 
-            if (mode === 'system') txt.textContent = 'Tự Động';
-            else if (mode === 'light') txt.textContent = 'Giao Diện Sáng';
-            else txt.textContent = 'Giao Diện Tối';
+            let modeText = 'Tự Động';
+            let nextModeText = 'Giao Diện Sáng';
+            if (mode === 'system') {
+                modeText = 'Tự Động';
+                nextModeText = 'Giao Diện Sáng';
+            } else if (mode === 'light') {
+                modeText = 'Giao Diện Sáng';
+                nextModeText = 'Giao Diện Tối';
+            } else {
+                modeText = 'Giao Diện Tối';
+                nextModeText = 'Tự Động (Theo Hệ Thống)';
+            }
+            txt.textContent = modeText;
+
+            if (btn) {
+                const titleStr = `Chế độ hiển thị: ${modeText}. Nhấn để chuyển sang ${nextModeText}`;
+                btn.setAttribute('title', titleStr);
+                btn.setAttribute('aria-label', titleStr);
+            }
         }
 
         function applyResolvedVisuals(resolvedTheme) {
@@ -1025,7 +1155,8 @@
 
             leafletMap = L.map('mapContainer', {
                 zoomControl: true,
-                attributionControl: true
+                attributionControl: true,
+                scrollWheelZoom: false
             }).setView([uttLat, uttLon], 16);
 
             // 1. Vệ Tinh Thực Địa Độ Phân Giải Cao Esri World Imagery (100% Free, NO API KEY)
