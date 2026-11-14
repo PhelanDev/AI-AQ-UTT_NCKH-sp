@@ -63,6 +63,16 @@ class TestWebServerEndpoints:
             assert 'localStorage' in html
             assert 'btn-theme-toggle' in html or 'btnThemeToggle' in html
 
+    def test_mobile_map_optimization_features(self, test_server):
+        """Kiểm tra có nút định vị tâm trạm đo và tối ưu legend cho mobile."""
+        url = f"{test_server}/"
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=3.0) as resp:
+            html = resp.read().decode("utf-8")
+            assert "btnCenterStation" in html or "centerMapOnStation" in html
+            assert "invalidateSize" in html
+            assert "touch-action: manipulation" in html
+
     def test_mobile_responsive_hallmark_standards(self, test_server):
         """Kiểm tra các quy chuẩn chống tràn viền, responsive và tem Hallmark cho mobile."""
         url = f"{test_server}/"

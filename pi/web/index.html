@@ -461,6 +461,7 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
+            position: relative;
         }
 
         .map-toolbar {
@@ -469,6 +470,10 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 10px;
+        }
+
+        .horizon-buttons-wrapper {
+            position: relative;
         }
 
         .horizon-buttons {
@@ -513,6 +518,35 @@
             background: #090A0F;
             position: relative;
             overflow: hidden;
+        }
+
+        .btn-map-fab {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            z-index: 1000;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-heading);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+        }
+
+        .btn-map-fab:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-focus);
+        }
+
+        .leaflet-top.leaflet-left {
+            margin-top: 50px;
         }
 
         /* Leaflet Controls Styling with Glassmorphism */
@@ -571,8 +605,8 @@
 
         .map-scale-legend {
             position: absolute;
-            bottom: 16px;
-            right: 16px;
+            bottom: 28px;
+            right: 28px;
             background: rgba(18, 20, 28, 0.88);
             border: 1px solid var(--border-hairline);
             border-radius: 6px;
@@ -582,6 +616,12 @@
             -webkit-backdrop-filter: blur(8px);
             font-size: 0.72rem;
             box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+            pointer-events: auto;
+        }
+
+        [data-theme="light"] .map-scale-legend {
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
         }
 
         .legend-title {
@@ -747,13 +787,23 @@
                 height: 290px;
             }
             .map-scale-legend {
-                bottom: 8px;
-                right: 8px;
+                position: static;
+                width: 100%;
+                margin-top: 6px;
                 padding: 6px 10px;
-                font-size: 0.68rem;
+                box-shadow: none;
+                background: transparent;
+                border: none;
             }
             .legend-gradient-bar {
-                width: 140px;
+                width: 100%;
+                height: 6px;
+            }
+            .horizon-buttons-wrapper {
+                position: relative;
+                width: 100%;
+                mask-image: linear-gradient(to right, black 85%, transparent 100%);
+                -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
             }
             footer {
                 padding: 14px 16px;
@@ -913,18 +963,17 @@
                     </div>
 
                     <!-- Horizon Buttons -->
-                    <div class="horizon-buttons">
-                        <button class="btn-horizon active" onclick="switchHorizon('current')">Hiện Tại</button>
-                        <button class="btn-horizon" onclick="switchHorizon('+1h')">+1h</button>
-                        <button class="btn-horizon" onclick="switchHorizon('+3h')">+3h</button>
-                        <button class="btn-horizon" onclick="switchHorizon('+6h')">+6h</button>
-                        <button class="btn-horizon" onclick="switchHorizon('+12h')">+12h</button>
-                        <button class="btn-horizon" onclick="switchHorizon('+24h')">+24h</button>
+                    <div class="horizon-buttons-wrapper">
+                        <div class="horizon-buttons">
+                            <button class="btn-horizon active" onclick="switchHorizon('current')">Hiện Tại</button>
+                            <button class="btn-horizon" onclick="switchHorizon('+1h')">+1h</button>
+                            <button class="btn-horizon" onclick="switchHorizon('+3h')">+3h</button>
+                            <button class="btn-horizon" onclick="switchHorizon('+6h')">+6h</button>
+                            <button class="btn-horizon" onclick="switchHorizon('+12h')">+12h</button>
+                            <button class="btn-horizon" onclick="switchHorizon('+24h')">+24h</button>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Leaflet Container -->
-                <div id="mapContainer">
                     <div class="map-scale-legend">
                         <div class="legend-title">Nồng độ PM2.5 (µg/m³)</div>
                         <div class="legend-gradient-bar"></div>
@@ -936,6 +985,16 @@
                             <span>150+</span>
                         </div>
                     </div>
+                </div>
+
+                <!-- Leaflet Container -->
+                <div id="mapContainer">
+                    <button class="btn-map-fab" id="btnCenterStation" onclick="centerMapOnStation()" title="Căn giữa trạm đo UTT 54 Triều Khúc" aria-label="Căn giữa trạm đo">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
@@ -1117,6 +1176,20 @@
 
                 forecastChart.update('none');
             }
+            if (leafletMap) {
+                leafletMap.invalidateSize();
+            }
+        }
+
+        // Căn giữa trạm quan trắc UTT 54 Triều Khúc và mở popup
+        function centerMapOnStation() {
+            if (!leafletMap) return;
+            const isMobile = window.innerWidth <= 768;
+            const targetZoom = isMobile ? 15 : 16;
+            leafletMap.setView([20.983688, 105.797477], targetZoom, { animate: true });
+            if (stationMarker) {
+                stationMarker.openPopup();
+            }
         }
 
         // Bảng quy đổi màu sắc VN-AQI theo QCVN 05:2023/BTNMT
@@ -1153,12 +1226,18 @@
             // Tọa độ chuẩn xác trạm thực nghiệm theo yêu cầu: 20.983688, 105.797477
             const uttLat = 20.983688;
             const uttLon = 105.797477;
+            const isMobile = window.innerWidth <= 768;
+            const defaultZoom = isMobile ? 15 : 16;
 
             leafletMap = L.map('mapContainer', {
                 zoomControl: true,
                 attributionControl: true,
                 scrollWheelZoom: false
-            }).setView([uttLat, uttLon], 16);
+            }).setView([uttLat, uttLon], defaultZoom);
+
+            setTimeout(() => {
+                if (leafletMap) leafletMap.invalidateSize();
+            }, 250);
 
             // 1. Vệ Tinh Thực Địa Độ Phân Giải Cao Esri World Imagery (100% Free, NO API KEY)
             const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -1532,6 +1611,9 @@
                 }
 
                 renderHeatmapOverlay();
+                if (leafletMap) {
+                    leafletMap.invalidateSize();
+                }
             } catch (err) {
                 console.error('Lỗi tải dữ liệu bản đồ:', err);
             }
@@ -1592,6 +1674,10 @@
             initThemeEngine();
             initMap();
             initForecastChart();
+
+            window.addEventListener('resize', () => {
+                if (leafletMap) leafletMap.invalidateSize();
+            });
             
             updateLiveClock();
             setInterval(updateLiveClock, 1000);
