@@ -64,7 +64,7 @@ class TestWebServerEndpoints:
             assert 'btn-theme-toggle' in html or 'btnThemeToggle' in html
 
     def test_mobile_responsive_hallmark_standards(self, test_server):
-        """Kiểm tra các quy chuẩn chống tràn viền và responsive cho mobile."""
+        """Kiểm tra các quy chuẩn chống tràn viền, responsive và tem Hallmark cho mobile."""
         url = f"{test_server}/"
         req = urllib.request.Request(url)
         with urllib.request.urlopen(req, timeout=3.0) as resp:
@@ -72,6 +72,8 @@ class TestWebServerEndpoints:
             assert "overflow-x: clip" in html or "overflow-x: hidden" in html
             assert "@media (max-width: 768px)" in html or "@media (max-width: 640px)" in html
             assert "scrollWheelZoom: false" in html or "scrollWheelZoom" in html
+            assert "Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5" in html
+            assert "min-height: 40px" in html
 
     def test_api_status(self, test_server):
         """Kiểm tra API trạng thái hệ thống: /api/status."""
