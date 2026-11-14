@@ -51,6 +51,18 @@ class TestWebServerEndpoints:
             assert '--bg-canvas' in html
             assert 'prefers-color-scheme' in html
 
+    def test_theme_switcher_mechanisms(self, test_server):
+        """Kiểm tra có đầy đủ hàm quản lý theme và hoán đổi lớp bản đồ sáng/tối."""
+        url = f"{test_server}/"
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=3.0) as resp:
+            html = resp.read().decode("utf-8")
+            assert 'cycleThemeMode' in html or 'setTheme' in html
+            assert 'World_Light_Gray_Base' in html
+            assert 'World_Dark_Gray_Base' in html
+            assert 'localStorage' in html
+            assert 'btn-theme-toggle' in html or 'btnThemeToggle' in html
+
     def test_api_status(self, test_server):
         """Kiểm tra API trạng thái hệ thống: /api/status."""
         url = f"{test_server}/api/status"

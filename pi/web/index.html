@@ -9,7 +9,9 @@
     <script>
         (function() {
             try {
-                const saved = localStorage.getItem('aq_theme_mode') || 'system';
+                const VALID_THEMES = ['system', 'light', 'dark'];
+                const raw = localStorage.getItem('aq_theme_mode');
+                const saved = VALID_THEMES.includes(raw) ? raw : 'system';
                 const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 const resolved = (saved === 'system') ? (systemDark ? 'dark' : 'light') : saved;
                 document.documentElement.setAttribute('data-theme', resolved);
@@ -216,25 +218,58 @@
             50% { opacity: 0.5; transform: scale(0.9); }
         }
 
-        .btn-sync {
-            background: rgba(255, 255, 255, 0.04);
-            color: #E2E8F0;
+        .btn-theme-toggle {
+            background: var(--bg-card);
+            color: var(--text-heading);
             border: 1px solid var(--border-subtle);
-            padding: 7px 16px;
+            min-height: 44px;
+            padding: 8px 14px;
             border-radius: 6px;
             font-size: 0.82rem;
             font-weight: 500;
             cursor: pointer;
-            display: flex;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .btn-theme-toggle:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-focus);
+            color: var(--text-heading);
+        }
+
+        .btn-theme-toggle:active {
+            transform: translateY(1px);
+        }
+
+        .theme-icon {
+            flex-shrink: 0;
+        }
+
+        .btn-sync {
+            background: var(--bg-card);
+            color: var(--text-heading);
+            border: 1px solid var(--border-subtle);
+            min-height: 44px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
             align-items: center;
             gap: 8px;
             transition: all 0.2s ease;
         }
 
         .btn-sync:hover {
-            background: rgba(255, 255, 255, 0.08);
+            background: var(--bg-card-hover);
             border-color: var(--border-focus);
-            color: #FFFFFF;
+            color: var(--text-heading);
         }
 
         .btn-sync:active {
@@ -648,6 +683,18 @@
                     <div class="indicator-dot"></div>
                     <span>TRỰC TUYẾN • 15 PHÚT/LẦN</span>
                 </div>
+                <button class="btn-theme-toggle" id="btnThemeToggle" onclick="cycleThemeMode()" title="Chuyển chế độ hiển thị (Sáng / Tối / Tự động)" aria-label="Chuyển chế độ hiển thị">
+                    <svg id="iconThemeSystem" class="theme-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>
+                    </svg>
+                    <svg id="iconThemeLight" class="theme-icon" style="display:none;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
+                    </svg>
+                    <svg id="iconThemeDark" class="theme-icon" style="display:none;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                    </svg>
+                    <span id="themeToggleText">Tự Động</span>
+                </button>
                 <button class="btn-sync" id="btnSyncCycle" onclick="triggerManualCycle()">
                     <svg id="syncIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
@@ -830,6 +877,116 @@
         let stationMarker = null;
         let heatmapOverlay = null;
         let forecastChart = null;
+        let darkAtmospheric = null;
+        let lightAtmospheric = null;
+
+        // Theme Engine V5.0
+        const VALID_THEMES = ['system', 'light', 'dark'];
+        let currentThemeMode = (function() {
+            try {
+                const raw = localStorage.getItem('aq_theme_mode');
+                if (VALID_THEMES.includes(raw)) return raw;
+            } catch(e) {}
+            return 'system';
+        })();
+
+        function initThemeEngine() {
+            applyThemeMode(currentThemeMode, false);
+            
+            // Lắng nghe thay đổi chế độ sáng/tối từ hệ điều hành người dùng
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                if (currentThemeMode === 'system') {
+                    const resolved = e.matches ? 'dark' : 'light';
+                    document.documentElement.setAttribute('data-theme', resolved);
+                    applyResolvedVisuals(resolved);
+                }
+            });
+        }
+
+        function cycleThemeMode() {
+            const nextIdx = (VALID_THEMES.indexOf(currentThemeMode) + 1) % VALID_THEMES.length;
+            currentThemeMode = VALID_THEMES[nextIdx];
+            try {
+                localStorage.setItem('aq_theme_mode', currentThemeMode);
+            } catch(e) {}
+            applyThemeMode(currentThemeMode, true);
+        }
+
+        function applyThemeMode(mode, userTriggered) {
+            if (!VALID_THEMES.includes(mode)) {
+                mode = 'system';
+                currentThemeMode = 'system';
+            }
+            const isDarkSys = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const resolved = (mode === 'system') ? (isDarkSys ? 'dark' : 'light') : mode;
+            
+            document.documentElement.setAttribute('data-theme', resolved);
+            updateThemeToggleUI(mode);
+            applyResolvedVisuals(resolved);
+        }
+
+        function updateThemeToggleUI(mode) {
+            const iconSys = document.getElementById('iconThemeSystem');
+            const iconLight = document.getElementById('iconThemeLight');
+            const iconDark = document.getElementById('iconThemeDark');
+            const txt = document.getElementById('themeToggleText');
+            if (!iconSys || !iconLight || !iconDark || !txt) return;
+
+            iconSys.style.display = (mode === 'system') ? 'inline-block' : 'none';
+            iconLight.style.display = (mode === 'light') ? 'inline-block' : 'none';
+            iconDark.style.display = (mode === 'dark') ? 'inline-block' : 'none';
+
+            if (mode === 'system') txt.textContent = 'Tự Động';
+            else if (mode === 'light') txt.textContent = 'Giao Diện Sáng';
+            else txt.textContent = 'Giao Diện Tối';
+        }
+
+        function applyResolvedVisuals(resolvedTheme) {
+            const isDark = (resolvedTheme === 'dark');
+
+            // 1. Hoán đổi lớp nền Leaflet tương thích với theme
+            if (leafletMap && darkAtmospheric && lightAtmospheric) {
+                if (isDark) {
+                    if (leafletMap.hasLayer(lightAtmospheric)) {
+                        leafletMap.removeLayer(lightAtmospheric);
+                        leafletMap.addLayer(darkAtmospheric);
+                    }
+                } else {
+                    if (leafletMap.hasLayer(darkAtmospheric)) {
+                        leafletMap.removeLayer(darkAtmospheric);
+                        leafletMap.addLayer(lightAtmospheric);
+                    }
+                }
+            }
+
+            // 2. Cập nhật màu sắc biểu đồ Chart.js mà không làm mất dữ liệu
+            if (forecastChart) {
+                const tickColor = isDark ? '#64748B' : '#475569';
+                const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.06)';
+                const tooltipBg = isDark ? '#12141C' : '#FFFFFF';
+                const tooltipTitle = '#F97316';
+                const tooltipBody = isDark ? '#F8FAFC' : '#0F172A';
+                const tooltipBorder = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(15, 23, 42, 0.12)';
+                const legendColor = isDark ? '#94A3B8' : '#475569';
+
+                forecastChart.options.scales.x.ticks.color = tickColor;
+                forecastChart.options.scales.y.ticks.color = tickColor;
+                forecastChart.options.scales.y.title.color = tickColor;
+                forecastChart.options.scales.y.grid.color = gridColor;
+
+                forecastChart.options.plugins.tooltip.backgroundColor = tooltipBg;
+                forecastChart.options.plugins.tooltip.titleColor = tooltipTitle;
+                forecastChart.options.plugins.tooltip.bodyColor = tooltipBody;
+                forecastChart.options.plugins.tooltip.borderColor = tooltipBorder;
+                forecastChart.options.plugins.legend.labels.color = legendColor;
+
+                if (forecastChart.data.datasets && forecastChart.data.datasets.length > 0) {
+                    forecastChart.data.datasets[0].pointBorderColor = isDark ? '#090A0F' : '#FFFFFF';
+                }
+
+                forecastChart.update('none');
+            }
+        }
 
         // Bảng quy đổi màu sắc VN-AQI theo QCVN 05:2023/BTNMT
         function getAqiColor(aqi) {
@@ -886,26 +1043,43 @@
                 maxZoom: 19,
                 attribution: ''
             });
-            const darkAtmospheric = L.layerGroup([darkBase, darkRef]);
+            darkAtmospheric = L.layerGroup([darkBase, darkRef]);
 
-            // 3. Bản Đồ Đường Phố Chi Tiết Esri World Street Map (100% Free, NO API KEY)
+            // 3. Chế Độ Sáng Khí Tượng Esri Light Gray Canvas (100% Free, NO API KEY)
+            const lightBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Tiles &copy; Esri'
+            });
+            const lightRef = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: ''
+            });
+            lightAtmospheric = L.layerGroup([lightBase, lightRef]);
+
+            // 4. Bản Đồ Đường Phố Chi Tiết Esri World Street Map (100% Free, NO API KEY)
             const esriStreet = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
                 attribution: 'Tiles &copy; Esri &mdash; Street Map'
             });
 
-            // 4. Bản Đồ Địa Hình & Khí Hậu Esri World Topo Map (100% Free, NO API KEY)
+            // 5. Bản Đồ Địa Hình & Khí Hậu Esri World Topo Map (100% Free, NO API KEY)
             const esriTopo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
                 attribution: 'Tiles &copy; Esri &mdash; Topo Map'
             });
 
-            // Lớp mặc định: Chế Độ Tối Khí Tượng (tối giản, làm nổi bật đám mây khói bụi PM2.5)
-            darkAtmospheric.addTo(leafletMap);
+            // Lớp mặc định dựa theo theme hiện hành (sáng hoặc tối)
+            const initialResolved = document.documentElement.getAttribute('data-theme') || 'dark';
+            if (initialResolved === 'light') {
+                lightAtmospheric.addTo(leafletMap);
+            } else {
+                darkAtmospheric.addTo(leafletMap);
+            }
 
             // Thêm bộ chuyển lớp (Layer Switcher) ở góc trên bên phải
             const baseMaps = {
-                "Bản đồ tối (Mặc định)": darkAtmospheric,
+                "Bản đồ tối": darkAtmospheric,
+                "Bản đồ sáng": lightAtmospheric,
                 "Bản đồ đường phố": esriStreet,
                 "Bản đồ vệ tinh": esriSatellite,
                 "Bản đồ địa hình": esriTopo
@@ -1129,6 +1303,7 @@
                     }
                 }
             });
+            applyResolvedVisuals(document.documentElement.getAttribute('data-theme') || 'dark');
         }
 
         // Hàm vẽ Mini Sparkline SVG chìm
@@ -1282,6 +1457,7 @@
 
         // Khởi động
         window.addEventListener('DOMContentLoaded', () => {
+            initThemeEngine();
             initMap();
             initForecastChart();
             
