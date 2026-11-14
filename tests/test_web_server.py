@@ -188,3 +188,13 @@ class TestWebServerEndpoints:
             assert data["success"] is True
             assert "cycle_result" in data
             assert "execution_latency_ms" in data["cycle_result"]
+
+    def test_web_interface_guidelines_compliance(self, test_server):
+        """Kiểm tra tuân thủ touch-action manipulation và tabular-nums."""
+        url = f"{test_server}/"
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=3.0) as resp:
+            html = resp.read().decode("utf-8")
+            assert "touch-action: manipulation" in html
+            assert "tabular-nums" in html
+
