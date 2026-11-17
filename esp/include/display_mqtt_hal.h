@@ -110,10 +110,14 @@ void lcd_format_screen_buffer(const EdgeDisplayPayload *payload, char *out_buf, 
 int mqtt_format_telemetry_json(const EdgeTelemetryPacket *pkt, char *out_json, size_t max_len);
 
 // ============================================================================
-// Offline Circular Ring Buffer (Fault-Tolerant PSRAM/SRAM Storage)
+// Offline Circular Ring Buffer (Fault-Tolerant RTC Slow Memory Storage)
 // ============================================================================
 
-#define OFFLINE_RINGBUF_CAPACITY 256
+#define OFFLINE_RINGBUF_CAPACITY 128 // 128 * 32B = 4KB an toàn trong RTC Slow Memory (8KB)
+
+typedef bool (*mqtt_transport_send_fn)(const char *topic, const char *json_payload, size_t len);
+void mqtt_set_transport_sender(mqtt_transport_send_fn fn);
+bool mqtt_send_telemetry_packet(const EdgeTelemetryPacket *pkt, const char *topic);
 
 /**
  * @brief Pushes a 32-byte telemetry packet into the static offline ring buffer.

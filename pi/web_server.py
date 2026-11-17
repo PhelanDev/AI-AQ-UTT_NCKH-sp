@@ -44,10 +44,11 @@ class NumpyEncoder(json.JSONEncoder):
 
 class AQServerState:
     """Quản lý trạng thái chia sẻ an toàn luồng (Thread-safe) của Web Server."""
-    def __init__(self, engine: Optional[CentralAIEngine] = None):
+    def __init__(self, engine: Optional[CentralAIEngine] = None, demo_mode: bool = False):
         self.lock = threading.Lock()
         self.start_time = time.time()
         self.engine = engine if engine is not None else CentralAIEngine()
+        self.demo_mode = demo_mode
         
         # Trạng thái cảm biến trạm mẫu thực nghiệm 54 Triều Khúc (UTT)
         self.current_telemetry = {
@@ -80,13 +81,50 @@ class AQServerState:
         # Tính toán khung đầu tiên ngay khi khởi tạo
         self.execute_cycle(reason="startup_init")
 
+    def ingest_telemetry(self, packet: Dict[str, Any]) -> Dict[str, Any]:
+        """Tiếp nhận và xử lý gói tin quan trắc thời gian thực từ trạm Edge ESP32-S3."""
+        with self.lock:
+            pm25 = float(packet.get("pm25", packet.get("pm25_calibrated", packet.get("pm1_raw", self.current_6d[0]))))
+            pm10 = float(packet.get("pm10", packet.get("pm10_raw", pm25 * 1.35)))
+            temp_c = float(packet.get("temp_c", self.current_6d[2]))
+            rh_percent = float(packet.get("rh_percent", self.current_6d[3]))
+            co2_ppm = float(packet.get("co2_ppm", self.current_6d[4]))
+            gas_proxy = float(packet.get("gas_proxy", self.current_6d[5]))
+            st_id = str(packet.get("station_id", self.current_telemetry["station_id"]))
+
+            self.current_6d[0] = pm25
+            self.current_6d[1] = pm10
+            self.current_6d[2] = temp_c
+            self.current_6d[3] = rh_percent
+            self.current_6d[4] = co2_ppm
+            self.current_6d[5] = gas_proxy
+
+            self.current_telemetry["station_id"] = st_id
+            self.current_telemetry["pm25"] = round(pm25, 1)
+            self.current_telemetry["pm10"] = round(pm10, 1)
+            self.current_telemetry["temp_c"] = round(temp_c, 1)
+            self.current_telemetry["rh_percent"] = round(rh_percent, 1)
+            self.current_telemetry["co2_ppm"] = round(co2_ppm, 1)
+            self.current_telemetry["gas_proxy"] = round(gas_proxy, 1)
+            if "flags" in packet:
+                self.current_telemetry["flags"] = packet["flags"]
+            if "anomaly_code" in packet:
+                self.current_telemetry["anomaly_code"] = packet["anomaly_code"]
+
+            # Cập nhật chuỗi lịch sử (FIFO shift)
+            self.history_24x1 = np.roll(self.history_24x1, -1, axis=0)
+            self.history_24x1[-1, 0] = pm25
+
+        # Tự động kích hoạt chu kỳ suy luận với dữ liệu thực vừa nạp
+        return self.execute_cycle(reason="telemetry_ingested")
+
     def execute_cycle(self, reason: str = "manual_trigger") -> Dict[str, Any]:
-        """Kích hoạt chu kỳ tính toán AI toàn diện (15-min cycle simulation)."""
+        """Kích hoạt chu kỳ tính toán AI toàn diện."""
         with self.lock:
             t0 = time.perf_counter()
             
-            # Cập nhật thông số mẫu với biến thiên nhẹ thực tế
-            if reason != "startup_init":
+            # Chỉ tạo jitter ngẫu nhiên khi bật rõ ràng chế độ demo hoặc simulation
+            if self.demo_mode or reason == "demo_simulation":
                 jitter = float(np.random.uniform(-1.5, 1.5))
                 new_pm25 = max(5.0, min(250.0, float(self.current_6d[0]) + jitter))
                 self.current_6d[0] = new_pm25
@@ -184,7 +222,9 @@ class AQWebServerHandler(BaseHTTPRequestHandler):
         if path == "":
             path = "/"
 
-        state = getattr(self.server, "app_state", get_server_state())
+        state = getattr(self.server, "app_state", None)
+        if state is None:
+            state = get_server_state()
 
         if path in ("/", "/index.html"):
             # Phục vụ Dashboard HTML
@@ -248,7 +288,9 @@ class AQWebServerHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         """Xử lý các truy vấn POST (kích hoạt chu kỳ tính toán mới)."""
         path = self.path.split("?")[0].rstrip("/")
-        state = getattr(self.server, "app_state", get_server_state())
+        state = getattr(self.server, "app_state", None)
+        if state is None:
+            state = get_server_state()
 
         if path == "/api/trigger_cycle":
             content_length = int(self.headers.get("Content-Length", 0))
@@ -266,6 +308,23 @@ class AQWebServerHandler(BaseHTTPRequestHandler):
                 "cycle_result": cycle_result
             }
             self._send_json_response(200, json.dumps(resp).encode("utf-8"))
+
+        elif path == "/api/telemetry":
+            content_length = int(self.headers.get("Content-Length", 0))
+            post_body = self.rfile.read(content_length) if content_length > 0 else b"{}"
+            try:
+                data = json.loads(post_body.decode("utf-8")) if post_body else {}
+                cycle_result = state.ingest_telemetry(data)
+                resp = {
+                    "success": True,
+                    "status": "TELEMETRY_INGESTED",
+                    "telemetry": state.current_telemetry,
+                    "cycle_result": cycle_result,
+                }
+                self._send_json_response(200, json.dumps(resp).encode("utf-8"))
+            except Exception as e:
+                err = json.dumps({"success": False, "error": str(e)}).encode("utf-8")
+                self._send_json_response(400, err)
 
         else:
             err = json.dumps({"error": "Endpoint Not Found", "path": path}).encode("utf-8")

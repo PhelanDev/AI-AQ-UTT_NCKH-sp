@@ -23,7 +23,7 @@ AQ_Lite uses a distributed architecture designed for low power consumption, dete
   ├── Data Ingestion & Validation: Rolling 3-Sigma (Z > 3) + QCVN 05:2023/BTNMT
   ├── Time-Series Forecaster: 1-Layer Vanilla GRU (32 hidden units, 6,192 parameters)
   ├── Spatial Mapping Engine: Inverse Distance Weighting (IDW, p = 2.0)
-  └── Web Dashboard: FastAPI backend with Leaflet.js real-time geospatial UI
+  └── Web Dashboard: Native Python HTTP server with Leaflet.js real-time geospatial UI
 ```
 
 ### Core Operational Principles
@@ -114,10 +114,10 @@ The firmware unit tests compile on any standard C++17 compiler (MinGW, GCC, Clan
 
 ```powershell
 # Navigate to ESP test directory
-Set-Location E:\AQ_Lite\esp\tests
+Set-Location E:\AQ\esp\tests
 
 # Compile and run the 15-minute power management FSM test
-g++ -std=c++17 -I../include test_firmware_15min_cycle.cpp ../src/display_mqtt_hal.cpp -o test_firmware_15min_cycle.exe
+g++ -std=c++17 -I../include test_firmware_15min_cycle.cpp ../src/display_mqtt_hal.cpp ../src/power_scheduler.cpp ../src/st7789_lcd_driver.cpp ../src/tinyml_edge_engine.cpp ../src/sensor_drivers.cpp -o test_firmware_15min_cycle.exe
 .\test_firmware_15min_cycle.exe
 
 # Compile and run the TinyML INT8 engine test (latency and numerical equivalence)
@@ -144,25 +144,25 @@ pytest tests/ -v
 To retrain the neural network models and regenerate the embedded C header:
 
 ```powershell
-Set-Location E:\AQ_Lite
+Set-Location E:\AQ
 
 # Train and quantize the Edge Standard MLP model, outputting esp/include/model_data.h
 python mlops/scripts/train_and_quantize_standard_mlp_lite.py
 
 # Train the 24-hour Vanilla GRU forecasting model for Raspberry Pi 5
-python mlops/scripts/train_lite_central_models.py
+python mlops/scripts/train_central_forecaster.py
 
-# Or run the complete automated pipeline for all models
+# Or run the complete automated pipeline for all four models
 python mlops/scripts/train_all_lite.py
 ```
 
 ### 5.4. Launching the Gateway Web Server
 
-Start the FastAPI backend with the Leaflet.js real-time monitoring map:
+Start the lightweight Python HTTP backend with the Leaflet.js real-time monitoring map:
 
 ```powershell
-Set-Location E:\AQ_Lite
-python -m uvicorn pi.web_server:app --host 0.0.0.0 --port 8000 --reload
+Set-Location E:\AQ
+python -m pi.web_server 8000
 ```
 
 Open a web browser and navigate to `http://localhost:8000` to inspect real-time sensor streams, forecasted 24-hour trends, and spatial pollution distribution.

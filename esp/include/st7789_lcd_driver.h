@@ -102,6 +102,16 @@ void st7789_set_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
 void st7789_fill_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color);
 
 /**
+ * @brief Draws a single ASCII character using embedded 5x7 bitmap font.
+ */
+void st7789_draw_char(uint16_t x, uint16_t y, char c, uint16_t color, uint16_t bg, uint8_t size);
+
+/**
+ * @brief Draws an ASCII string using embedded 5x7 bitmap font.
+ */
+void st7789_draw_string(uint16_t x, uint16_t y, const char *str, uint16_t color, uint16_t bg, uint8_t size);
+
+/**
  * @brief Renders the complete real-time air quality dashboard onto ST7789 display.
  *
  * Layout:

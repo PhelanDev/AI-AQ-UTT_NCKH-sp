@@ -140,14 +140,39 @@ int mqtt_format_telemetry_json(const EdgeTelemetryPacket *pkt, char *out_json, s
 }
 
 // ============================================================================
-// Offline Circular Ring Buffer (Static Memory, Zero Dynamic Allocation)
+// Offline Circular Ring Buffer (Fault-Tolerant RTC Slow Memory Storage)
 // ============================================================================
 
-static EdgeTelemetryPacket s_ringbuf[OFFLINE_RINGBUF_CAPACITY];
-static size_t s_head = 0;
-static size_t s_tail = 0;
-static size_t s_count = 0;
-static size_t s_dropped_count = 0;
+#if defined(ESP_PLATFORM) || defined(ARDUINO_ARCH_ESP32)
+#include "esp_attr.h"
+#define RTC_PERSISTENT_ATTR RTC_DATA_ATTR
+#else
+#define RTC_PERSISTENT_ATTR
+#endif
+
+static mqtt_transport_send_fn s_transport_sender = NULL;
+
+void mqtt_set_transport_sender(mqtt_transport_send_fn fn) {
+    s_transport_sender = fn;
+}
+
+bool mqtt_send_telemetry_packet(const EdgeTelemetryPacket *pkt, const char *topic) {
+    if (!pkt || !topic) return false;
+    char json_buf[512];
+    int json_len = mqtt_format_telemetry_json(pkt, json_buf, sizeof(json_buf));
+    if (json_len <= 0) return false;
+
+    if (s_transport_sender) {
+        return s_transport_sender(topic, json_buf, (size_t)json_len);
+    }
+    return true;
+}
+
+RTC_PERSISTENT_ATTR static EdgeTelemetryPacket s_ringbuf[OFFLINE_RINGBUF_CAPACITY];
+RTC_PERSISTENT_ATTR static size_t s_head = 0;
+RTC_PERSISTENT_ATTR static size_t s_tail = 0;
+RTC_PERSISTENT_ATTR static size_t s_count = 0;
+RTC_PERSISTENT_ATTR static size_t s_dropped_count = 0;
 
 bool offline_ringbuf_push(const EdgeTelemetryPacket *pkt) {
     if (!pkt || s_count >= OFFLINE_RINGBUF_CAPACITY) {

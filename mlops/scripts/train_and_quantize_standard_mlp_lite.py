@@ -98,11 +98,15 @@ def main():
     t_X_train = torch.from_numpy(X_train_norm)
     t_y_train = torch.from_numpy(y_c_train)
     t_pm_train = torch.from_numpy(X_train[:, 0:1])
+    t_raw_rh_train = torch.from_numpy(X_train[:, 4:5])
+    t_raw_co2_train = torch.from_numpy(X_train[:, 6:7])
     t_ref_train = torch.from_numpy(y_pm_train)
 
     t_X_test = torch.from_numpy(X_test_norm)
     t_ref_test = torch.from_numpy(y_pm_test)
     t_pm_test = torch.from_numpy(X_test[:, 0:1])
+    t_raw_rh_test = torch.from_numpy(X_test[:, 4:5])
+    t_raw_co2_test = torch.from_numpy(X_test[:, 6:7])
 
     model = StandardMLPLite(in_dim=8, h1_dim=32, h2_dim=16)
     total_params = sum(p.numel() for p in model.parameters())
@@ -126,11 +130,19 @@ def main():
             bx = t_X_train[idx]
             b_pm = t_pm_train[idx]
             b_ref = t_ref_train[idx]
+            b_rh = t_raw_rh_train[idx]
+            b_co2 = t_raw_co2_train[idx]
 
             optimizer.zero_grad()
             c_pred = model(bx)
-            pm_pred = b_pm * c_pred
-            # Tối ưu hóa trực tiếp nồng độ PM2.5 bù ẩm
+            
+            # Cổng Deliquescence 2 chiều khớp chính xác 100% với firmware C++
+            sig_rh = torch.sigmoid((b_rh - 68.0) / 7.0)
+            sig_co2 = torch.sigmoid((b_co2 - 800.0) / 240.0)
+            w_del = sig_rh * (1.0 - sig_co2)
+            c_eff = (1.0 - w_del) * 1.0 + w_del * c_pred
+            pm_pred = b_pm * c_eff
+
             loss = loss_fn(pm_pred, b_ref)
             loss.backward()
             optimizer.step()
@@ -139,13 +151,18 @@ def main():
         model.eval()
         with torch.no_grad():
             c_test = model(t_X_test)
-            pred_pm_test = (t_pm_test * c_test).numpy().flatten()
+            sig_rh_test = torch.sigmoid((t_raw_rh_test - 68.0) / 7.0)
+            sig_co2_test = torch.sigmoid((t_raw_co2_test - 800.0) / 240.0)
+            w_del_test = sig_rh_test * (1.0 - sig_co2_test)
+            c_eff_test = (1.0 - w_del_test) * 1.0 + w_del_test * c_test
+            pred_pm_test = (t_pm_test * c_eff_test).numpy().flatten()
             true_pm_test = t_ref_test.numpy().flatten()
-            rmse = np.sqrt(np.mean((pred_pm_test - true_pm_test) ** 2))
-            ss_tot = np.sum((true_pm_test - np.mean(true_pm_test)) ** 2)
-            ss_res = np.sum((true_pm_test - pred_pm_test) ** 2)
-            r2 = 1.0 - (ss_res / ss_tot)
-            print(f" [Epoch {ep+1:02d}/{epochs:02d}] Train Loss: {epoch_loss/n_batches:.4f} | Test RMSE: {rmse:.2f} ug/m3 | Test R2: {r2:.4f}")
+            rmse = float(np.sqrt(np.mean((pred_pm_test - true_pm_test) ** 2)))
+            mae = float(np.mean(np.abs(pred_pm_test - true_pm_test)))
+            ss_tot = float(np.sum((true_pm_test - np.mean(true_pm_test)) ** 2))
+            ss_res = float(np.sum((true_pm_test - pred_pm_test) ** 2))
+            r2 = float(1.0 - (ss_res / ss_tot))
+            print(f" [Epoch {ep+1:02d}/{epochs:02d}] Train Loss: {epoch_loss/n_batches:.4f} | Test RMSE: {rmse:.2f} ug/m3 | Test MAE: {mae:.2f} | Test R2: {r2:.4f}")
 
     # Lượng tử hóa sang INT8 và xuất C Header
     print("\n -> Tiến hành Lượng tử hóa Full INT8 cho ESP32-S3...")
@@ -161,11 +178,20 @@ def main():
     w_out_int8, scale_out = quantize_matrix(sd["fc_out.weight"])
     b_out = sd["fc_out.bias"].numpy()
 
-    # Lưu model PyTorch
+    # Lưu model PyTorch & thông số thực tế
     os.makedirs("mlops/models", exist_ok=True)
     torch.save(sd, "mlops/models/standard_mlp_lite.pt")
+    flash_footprint = int(w1_int8.size + w2_int8.size + w_out_int8.size)
     with open("mlops/models/standard_mlp_lite_params.json", "w", encoding="utf-8") as f:
-        json.dump({"x_min": x_min.tolist(), "x_max": x_max.tolist()}, f, indent=2)
+        json.dump({
+            "total_params": total_params,
+            "flash_footprint_bytes": flash_footprint,
+            "test_r2": round(r2, 5),
+            "test_mae_ugm3": round(mae, 5),
+            "test_rmse_ugm3": round(rmse, 5),
+            "x_min": x_min.tolist(),
+            "x_max": x_max.tolist()
+        }, f, indent=2)
 
     # Xuất file esp/include/model_data.h
     header_path = "esp/include/model_data.h"

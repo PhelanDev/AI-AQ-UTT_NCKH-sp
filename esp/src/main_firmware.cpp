@@ -150,28 +150,31 @@ static bool hardware_read_sensor_sample(int sample_idx, RawSensorSample *out_sam
     out_sample->timestamp = (uint32_t)time(NULL);
 
     float pm1_1 = 0, pm2_5_1 = 0, pm10_1 = 0;
-    if (!hardware_read_pms7003(SerialPMS1, &pm1_1, &pm2_5_1, &pm10_1)) {
-        pm1_1 = 38.0f; pm2_5_1 = 38.5f; pm10_1 = 52.0f;
+    bool pms1_ok = hardware_read_pms7003(SerialPMS1, &pm1_1, &pm2_5_1, &pm10_1);
+    if (!pms1_ok) {
+        // Cảm biến PMS1 lỗi: Báo lỗi ngay lập tức, không được tự ý điền số giả
+        out_sample->pm1_raw = -1.0f;
+        out_sample->pm10_raw = -1.0f;
+        out_sample->pm2_raw = -1.0f;
+        out_sample->temp_c = -999.0f;
+        out_sample->rh_percent = -1.0f;
+        return false;
     }
     out_sample->pm1_raw = pm2_5_1;
     out_sample->pm10_raw = pm10_1;
 
     float pm1_2 = 0, pm2_5_2 = 0, pm10_2 = 0;
-    if (!hardware_read_pms7003(SerialPMS2, &pm1_2, &pm2_5_2, &pm10_2)) {
-        pm2_5_2 = out_sample->pm1_raw + 0.4f;
-    }
-    out_sample->pm2_raw = pm2_5_2;
+    bool pms2_ok = hardware_read_pms7003(SerialPMS2, &pm1_2, &pm2_5_2, &pm10_2);
+    out_sample->pm2_raw = pms2_ok ? pm2_5_2 : pm2_5_1;
 
     float temp_c = 25.0f, rh_pct = 70.0f;
-    if (!hardware_read_sht40(&temp_c, &rh_pct)) {
-        temp_c = 28.5f; rh_pct = 84.0f;
-    }
-    out_sample->temp_c = temp_c;
-    out_sample->rh_percent = rh_pct;
+    bool sht_ok = hardware_read_sht40(&temp_c, &rh_pct);
+    out_sample->temp_c = sht_ok ? temp_c : -999.0f;
+    out_sample->rh_percent = sht_ok ? rh_pct : -1.0f;
 
     out_sample->co2_ppm = 520.0f;
     out_sample->gas_proxy = 110.0f;
-    return true;
+    return (pms1_ok && sht_ok);
 }
 
 #endif
@@ -226,23 +229,37 @@ void setup(void) {
 #endif
 #endif
 
-    // 3. Sensor Warmup Simulation & 30-Sample Burst Acquisition with Trimmed Mean Filter
-    // In production firmware, a non-blocking 30-second delay or RTC timer tracks warmup.
-    // After warmup, 30 consecutive samples are gathered into the burst accumulator.
+    // 3. Sensor Warmup thực tế (chờ quạt PMS7003 và buồng đo ổn định tối thiểu 30 giây)
+#if defined(ESP_PLATFORM) || defined(ARDUINO_ARCH_ESP32)
+    uint32_t t_power_on = millis();
+    while ((millis() - t_power_on) < 30000) {
+        delay(100);
+    }
+    float warmup_elapsed = (float)(millis() - t_power_on) / 1000.0f;
+#else
+    const float warmup_elapsed = 30.2f; // Warmup complete (>30s) trên host test
+#endif
+
     SensorBurstAccumulator burst_acc;
     burst_accumulator_init(&burst_acc);
 
+    bool all_valid = true;
     for (int i = 0; i < SENSOR_BURST_SAMPLE_COUNT; i++) {
         RawSensorSample sample;
-        hardware_read_sensor_sample(i, &sample);
-        burst_accumulator_push(&burst_acc, &sample);
+        if (hardware_read_sensor_sample(i, &sample)) {
+            burst_accumulator_push(&burst_acc, &sample);
+        } else {
+            all_valid = false;
+        }
     }
 
     // 4. Execute Complete 15-Minute FSM Duty Cycle with 30-Sample Burst Filter
-    const float warmup_elapsed = 30.2f; // Warmup complete (>30s)
     const bool mqtt_online = true;      // 4G/WiFi connected
 
     EdgeCycleResult result = edge_execute_15min_duty_cycle_burst(&burst_acc, warmup_elapsed, mqtt_online);
+    if (!all_valid) {
+        result.anomaly_code = TINYML_ANOMALY_SENSOR_FAULT;
+    }
 
     printf("[FSM] Status: AnomalyCode=%d, PM2.5_Cal=%.2f ug/m3, VN-AQI=%d\n",
            result.anomaly_code, result.pm25_calibrated, result.vn_aqi);

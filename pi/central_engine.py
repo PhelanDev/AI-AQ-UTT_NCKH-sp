@@ -54,6 +54,24 @@ from pi.data_pipeline import (
 )
 
 
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DEFAULT_FC_WEIGHTS = os.path.join(REPO_ROOT, "mlops", "models", "central_forecaster.pt")
+DEFAULT_AE_WEIGHTS = os.path.join(REPO_ROOT, "mlops", "models", "central_autoencoder.pt")
+DEFAULT_UNIFIED_WEIGHTS = os.path.join(REPO_ROOT, "mlops", "models", "central_unified_ai.pt")
+
+
+def _resolve_model_path(path: Optional[str], default_path: str) -> Optional[str]:
+    target = path if path is not None else default_path
+    if os.path.isabs(target) and os.path.exists(target):
+        return target
+    if os.path.exists(target):
+        return os.path.abspath(target)
+    alt = os.path.join(REPO_ROOT, target)
+    if os.path.exists(alt):
+        return alt
+    return None
+
+
 class CentralAIEngine:
     """
     Bộ não AI Trung tâm (Tầng 2) vận hành trên máy chủ Raspberry Pi 5.
@@ -67,9 +85,9 @@ class CentralAIEngine:
 
     def __init__(
         self,
-        forecaster_weights: Optional[str] = "mlops/models/central_forecaster.pt",
-        autoencoder_weights: Optional[str] = "mlops/models/central_autoencoder.pt",
-        unified_weights: Optional[str] = "mlops/models/central_unified_ai.pt",
+        forecaster_weights: Optional[str] = None,
+        autoencoder_weights: Optional[str] = None,
+        unified_weights: Optional[str] = None,
         use_onnx: bool = False,
     ):
         self.device = torch.device("cpu")
@@ -82,39 +100,50 @@ class CentralAIEngine:
             station_ids=self.station_ids, coordinates=self.coords_utm
         )
 
+        resolved_fc = _resolve_model_path(forecaster_weights, DEFAULT_FC_WEIGHTS)
+        resolved_ae = _resolve_model_path(autoencoder_weights, DEFAULT_AE_WEIGHTS)
+        resolved_unified = _resolve_model_path(unified_weights, DEFAULT_UNIFIED_WEIGHTS)
+
         # 1. Forecaster 14D (M3)
         self.forecaster = DilatedTCNBiGRUForecaster(
             in_features=14, tcn_channels=32, gru_hidden=32, out_steps=24, out_targets=2
         ).to(self.device)
-        if forecaster_weights and os.path.exists(forecaster_weights):
-            self.forecaster.load_state_dict(torch.load(forecaster_weights, map_location=self.device, weights_only=True))
+        if resolved_fc and os.path.exists(resolved_fc):
+            self.forecaster.load_state_dict(torch.load(resolved_fc, map_location=self.device, weights_only=True))
+        elif forecaster_weights is not None:
+            raise FileNotFoundError(f"Không tìm thấy checkpoint forecaster: {forecaster_weights}")
         self.forecaster.eval()
 
         # 2. Autoencoder 48D (M4)
         self.autoencoder = MultiStationDeepAutoencoder(
             in_features=48, latent_dim=16
         ).to(self.device)
-        if autoencoder_weights and os.path.exists(autoencoder_weights):
-            self.autoencoder.load_state_dict(torch.load(autoencoder_weights, map_location=self.device, weights_only=True))
+        if resolved_ae and os.path.exists(resolved_ae):
+            self.autoencoder.load_state_dict(torch.load(resolved_ae, map_location=self.device, weights_only=True))
+        elif autoencoder_weights is not None:
+            raise FileNotFoundError(f"Không tìm thấy checkpoint autoencoder: {autoencoder_weights}")
         self.autoencoder.eval()
 
         # 3. Unified Model V5.0 HierarchicalCentralAI (42.952 params)
         self.unified_model = HierarchicalCentralAI(
             in_features=16, tcn_channels=32, gru_hidden=32, out_steps=24, out_targets=2
         ).to(self.device)
-        if unified_weights and os.path.exists(unified_weights):
+        if resolved_unified and os.path.exists(resolved_unified):
             self.unified_model.load_state_dict(
-                torch.load(unified_weights, map_location=self.device, weights_only=True)
+                torch.load(resolved_unified, map_location=self.device, weights_only=True)
             )
+        elif unified_weights is not None:
+            raise FileNotFoundError(f"Không tìm thấy checkpoint unified: {unified_weights}")
         self.unified_model.eval()
 
         self.anomaly_detector = AdaptiveAnomalyDetector(beta_ema=0.98, n_sigma=3.0)
         self.classifier = PhysicalSignatureClassifier()
         self.edge_calibrator = TinyMLEdgeCalibrator()
 
-        self.forecaster_weights = forecaster_weights
-        self.autoencoder_weights = autoencoder_weights
-        self.unified_weights = unified_weights
+        self.forecaster_weights = resolved_fc
+        self.autoencoder_weights = resolved_ae
+        self.unified_weights = resolved_unified
+        self._event_duration_minutes = 10.0
         self._load_scaler_params()
 
         self.onnx_forecaster_session = None
@@ -336,6 +365,7 @@ class CentralAIEngine:
         sliding_window_history: np.ndarray,
         current_features_48d: np.ndarray,
         dt_s: float = 900.0,
+        duration_minutes: Optional[float] = None,
     ) -> Dict[str, Union[Dict, List, float, int, str]]:
         """
         Xử lý 1 khung đo tổng hợp thời gian thực gửi từ mạng lưới trạm về Pi 5.
@@ -641,10 +671,12 @@ class CentralAIEngine:
             station_forecasts = {}
             for i in range(self.n_stations):
                 sid = self.station_ids[i]
+                st_pm25 = [float(p * ratio_st[i]) for p in pm25_phys] if i < len(ratio_st) else pm25_list
+                st_aqi = _vectorized_vn_aqi_pm25(np.array(st_pm25)).tolist()
                 station_forecasts[sid] = {
                     "station_id": sid,
-                    "pm25_pred": pm25_list,
-                    "aqi_pred": aqi_list,
+                    "pm25_pred": st_pm25,
+                    "aqi_pred": st_aqi,
                 }
 
             web_map_v5 = {
@@ -667,6 +699,7 @@ class CentralAIEngine:
                 "station_forecasts": station_forecasts,
                 "spatial_maps": web_map_v5,
                 "web_map": web_map_v5,
+                "web_map_v5": web_map_v5,
                 "spatial_heatmap": spatial_heatmap_compat,
                 "resource_duty_cycle": {
                     "cycle_interval_s": float(dt_s),
@@ -854,7 +887,16 @@ class CentralAIEngine:
         for i in range(n_active):
             pm_seq = hist_24xN[:, i]
             feat_16[i, :, 0] = pm_seq
-            feat_16[i, :, 1] = pm_seq * 1.35
+
+            # Sử dụng PM10 thực tế từ cảm biến nếu có
+            pm10_val = float(st_mat[i, 1]) if st_mat.shape[1] > 1 else 0.0
+            if pm10_val > 0.0:
+                cur_pm25 = max(float(st_mat[i, 0]), 1.0)
+                pm10_ratio = np.clip(pm10_val / cur_pm25, 1.0, 3.5)
+                feat_16[i, :, 1] = pm_seq * pm10_ratio
+                feat_16[i, -1, 1] = pm10_val
+            else:
+                feat_16[i, :, 1] = pm_seq * 1.35
 
             temp_val = float(st_mat[i, 2])
             temp_c = temp_val if (-15.0 <= temp_val <= 55.0 and temp_val != 0.0) else 25.0
@@ -878,8 +920,11 @@ class CentralAIEngine:
             feat_16[i, :, 8] = wind_v
             feat_16[i, :, 9] = 1013.2
 
+            # Tính toán góc pha thời gian thích ứng với dt_s (mặc định 3600s = 1h, hoặc 900s = 15m)
+            step_hours = dt_s / 3600.0
             for t in range(24):
-                h_step = (base_hour - 23 + t) % 24
+                time_offset = (23 - t) * step_hours
+                h_step = (base_hour - time_offset) % 24.0
                 feat_16[i, t, 10] = math.sin(2.0 * math.pi * h_step / 24.0)
                 feat_16[i, t, 11] = math.cos(2.0 * math.pi * h_step / 24.0)
                 feat_16[i, t, 12] = math.sin(2.0 * math.pi * (base_mon - 1) / 12.0)
@@ -914,13 +959,19 @@ class CentralAIEngine:
         pm_per_st = st_mat[:, 0]
         stations_affected = int(np.sum(pm_per_st > 65.0))
         gases = ["pm25"]
-        if np.any(pm_per_st > 120.0):
-            gases.extend(["pm10", "co2", "voc"])
+        if st_mat.shape[1] > 1 and np.any(st_mat[:, 1] > 100.0):
+            gases.append("pm10")
+        if st_mat.shape[1] > 4 and np.any(st_mat[:, 4] > 600.0):
+            gases.append("co2")
+        if st_mat.shape[1] > 5 and np.any(st_mat[:, 5] > 200.0):
+            gases.append("voc")
+
+        eff_duration = duration_minutes if duration_minutes is not None else getattr(self, "_event_duration_minutes", 10.0)
 
         cid, cname, probs = self.classifier.classify(
             stations_affected=stations_affected,
             gases_elevated=gases,
-            duration_minutes=10.0,
+            duration_minutes=eff_duration,
             is_anomaly=is_anom,
         )
 
@@ -1039,6 +1090,7 @@ class CentralAIEngine:
             "station_forecasts": station_forecasts,
             "spatial_maps": web_map_v5,
             "web_map": web_map_v5,
+            "web_map_v5": web_map_v5,
             "spatial_heatmap": spatial_heatmap_compat,
             "resource_duty_cycle": {
                 "cycle_interval_s": float(dt_s),

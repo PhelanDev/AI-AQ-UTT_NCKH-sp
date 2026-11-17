@@ -50,14 +50,18 @@ def main():
     with open("mlops/models/standard_mlp_lite_params.json", "r", encoding="utf-8") as f:
         meta_m1 = json.load(f)
 
+    if "test_r2" not in meta_m1 or "test_mae_ugm3" not in meta_m1:
+        raise ValueError("Lỗi: standard_mlp_lite_params.json thiếu metric kiểm thử thực tế!")
+
     summary_report["models"]["M1_Edge_TinyML"] = {
         "architecture": "Standard MLP / FNN (8D -> 32 -> 16 -> 1)",
         "hardware_target": "ESP32-S3 (Octal PSRAM / SRAM)",
         "quantization": "Full INT8 Static Quantization (0 Byte Heap RAM)",
-        "params": meta_m1.get("total_params", 833),
-        "flash_footprint_bytes": meta_m1.get("flash_footprint_bytes", 784),
-        "test_r2": meta_m1.get("test_r2", 0.957),
-        "test_mae_ugm3": meta_m1.get("test_mae_ugm3", 3.12),
+        "params": meta_m1["total_params"],
+        "flash_footprint_bytes": meta_m1["flash_footprint_bytes"],
+        "test_r2": meta_m1["test_r2"],
+        "test_mae_ugm3": meta_m1["test_mae_ugm3"],
+        "test_rmse_ugm3": meta_m1.get("test_rmse_ugm3", 0.0),
         "training_time_s": round(dt_m1, 2)
     }
 

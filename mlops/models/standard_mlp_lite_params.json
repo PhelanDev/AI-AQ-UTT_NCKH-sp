@@ -1,4 +1,9 @@
 {
+  "total_params": 833,
+  "flash_footprint_bytes": 784,
+  "test_r2": 0.81853,
+  "test_mae_ugm3": 5.86554,
+  "test_rmse_ugm3": 11.2166,
   "x_min": [
     0.5199999809265137,
     0.0,

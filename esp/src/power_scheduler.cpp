@@ -142,16 +142,29 @@ EdgeCycleResult edge_execute_15min_duty_cycle(const RawSensorSample *raw_sample,
     if (mqtt_connected) {
         char json_buf[512];
         int json_len = mqtt_format_telemetry_json(&pkt, json_buf, sizeof(json_buf));
-        res.telemetry_sent = (json_len > 0);
+        bool sent_ok = (json_len > 0) && mqtt_send_telemetry_packet(&pkt, "aq/telemetry/utt_54_trieu_khuc");
+        res.telemetry_sent = sent_ok;
 
-        // Opportunistically drain any buffered packets queued during network outages (Store-and-Forward)
-        res.offline_backfilled_count = 0;
-        EdgeTelemetryPacket queued_pkt;
-        while (offline_ringbuf_pop(&queued_pkt)) {
-            queued_pkt.flags |= TELEMETRY_FLAG_BACKFILL;
-            char backfill_json[512];
-            mqtt_format_telemetry_json(&queued_pkt, backfill_json, sizeof(backfill_json));
-            res.offline_backfilled_count++;
+        if (sent_ok) {
+            // Chỉ backfill khi gói realtime đã gửi thành công qua transport
+            res.offline_backfilled_count = 0;
+            EdgeTelemetryPacket queued_pkt;
+            while (offline_ringbuf_count() > 0) {
+                if (offline_ringbuf_pop(&queued_pkt)) {
+                    queued_pkt.flags |= TELEMETRY_FLAG_BACKFILL;
+                    bool backfill_ok = mqtt_send_telemetry_packet(&queued_pkt, "aq/telemetry/utt_54_trieu_khuc");
+                    if (backfill_ok) {
+                        res.offline_backfilled_count++;
+                    } else {
+                        // Thất bại: Đưa lại gói vào hàng đợi và dừng xả bộ đệm
+                        offline_ringbuf_push(&queued_pkt);
+                        break;
+                    }
+                }
+            }
+        } else {
+            // Format lỗi hoặc Transport từ chối: Enqueue vào offline ringbuf
+            offline_ringbuf_push_overwrite(&pkt);
         }
         res.offline_buffered_count = (uint16_t)offline_ringbuf_count();
     } else {
@@ -167,7 +180,9 @@ EdgeCycleResult edge_execute_15min_duty_cycle(const RawSensorSample *raw_sample,
     // ========================================================================
     s_current_fsm_state = EDGE_STATE_PREPARE_SLEEP;
     res.pms_set_pin_level = false; // Turn OFF fan and laser
-    res.deep_sleep_duration_sec = ESP_DEEP_SLEEP_SEC; // 868 seconds
+    // Tính toán thời gian ngủ bù trừ chính xác thời gian thực thi (chu kỳ 900s)
+    uint32_t elapsed_awake = (warmup_elapsed_sec > 0.0f) ? (uint32_t)(warmup_elapsed_sec + 2.0f) : 32;
+    res.deep_sleep_duration_sec = (elapsed_awake < 900) ? (900 - elapsed_awake) : 10;
     st7789_enter_sleep();
 
 #if defined(ESP_PLATFORM) || defined(ARDUINO_ARCH_ESP32)

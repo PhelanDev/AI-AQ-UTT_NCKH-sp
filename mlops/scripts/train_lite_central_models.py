@@ -1,68 +1,57 @@
 #!/usr/bin/env python3
 """
 train_lite_central_models.py
-Khởi tạo và huấn luyện nhanh các trọng số checkpoint cho các mô hình AI Trung tâm Bản Lite:
+Script quản lý và bảo vệ các checkpoint mô hình AI Trung tâm Bản Lite:
 - central_forecaster.pt (Vanilla GRU Forecaster)
 - central_unified_ai.pt (HierarchicalCentralAI Lite)
 - central_autoencoder.pt (MultiStationDeepAutoencoder)
+
+LƯU Ý BẢO MẬT/KIẾN TRÚC:
+Tuyệt đối KHÔNG tạo trọng số ngẫu nhiên hoặc gán bias tĩnh để ghi đè checkpoint đang vận hành.
+Để huấn luyện lại toàn bộ mô hình với dữ liệu thực, chạy: python mlops/scripts/train_all_lite.py
 """
 
 import os
 import sys
+import argparse
 from pathlib import Path
-import numpy as np
-import torch
-import torch.nn as nn
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 os.chdir(ROOT_DIR)
 sys.path.insert(0, str(ROOT_DIR))
 
-from pi.forecasting_engine import DilatedTCNBiGRUForecaster
-from pi.unified_model import HierarchicalCentralAI
-from pi.anomaly_engine import MultiStationDeepAutoencoder
 
-
-def main():
-    print("=======================================================")
-    print(" KHỞI TẠO CHECKPOINT AI TRUNG TÂM LITE CHO RASPBERRY PI 5")
-    print("=======================================================")
+def check_or_train_lite_models(force_retrain: bool = False):
+    print("=" * 65)
+    print(" QUẢN LÝ CHECKPOINT AI TRUNG TÂM LITE CHO RASPBERRY PI 5")
+    print("=" * 65)
 
     os.makedirs("mlops/models", exist_ok=True)
-    device = torch.device("cpu")
-
-    # 1. Lite Forecaster (14 -> 32 -> 24x2)
-    print(" -> Đang khởi tạo Vanilla GRU Forecaster (14 features)...")
-    forecaster = DilatedTCNBiGRUForecaster(in_features=14, tcn_channels=32, gru_hidden=32, out_steps=24, out_targets=2)
     
-    # Khởi tạo trọng số fc để đầu ra nồng độ PM2.5 dự báo quanh 35 - 55 ug/m3
-    with torch.no_grad():
-        forecaster.fc.weight.normal_(0.0, 0.05)
-        forecaster.fc.bias.fill_(40.0)
+    forecaster_pt = Path("mlops/models/central_forecaster.pt")
+    unified_pt = Path("mlops/models/central_unified_ai.pt")
+    autoencoder_pt = Path("mlops/models/central_autoencoder.pt")
 
-    torch.save(forecaster.state_dict(), "mlops/models/central_forecaster.pt")
-    print(f"    + Đã lưu: mlops/models/central_forecaster.pt (Params: {sum(p.numel() for p in forecaster.parameters()):,})")
+    all_exist = forecaster_pt.exists() and unified_pt.exists() and autoencoder_pt.exists()
 
-    # 2. Lite Unified Central AI (16 -> 32 -> 24x2 & 16)
-    print(" -> Đang khởi tạo HierarchicalCentralAI Lite (16 features)...")
-    unified_ai = HierarchicalCentralAI(in_features=16, tcn_channels=32, gru_hidden=32, out_steps=24, out_targets=2)
-    with torch.no_grad():
-        unified_ai.forecast_head[0].weight.normal_(0.0, 0.05)
-        unified_ai.forecast_head[0].bias.fill_(40.0)
-        unified_ai.recon_head[0].weight.normal_(0.0, 0.05)
-        unified_ai.recon_head[0].bias.fill_(0.0)
+    if all_exist and not force_retrain:
+        print("[AN TOÀN] Các checkpoint mô hình trung tâm đã tồn tại và được bảo vệ:")
+        print(f"  + Forecaster  : {forecaster_pt} ({forecaster_pt.stat().st_size:,} bytes)")
+        print(f"  + Unified AI  : {unified_pt} ({unified_pt.stat().st_size:,} bytes)")
+        print(f"  + Autoencoder : {autoencoder_pt} ({autoencoder_pt.stat().st_size:,} bytes)")
+        print("\n[CHÚ Ý] Không ghi đè trọng số ngẫu nhiên lên artifact đang triển khai.")
+        print("Để huấn luyện lại toàn diện trên tập dữ liệu thực, sử dụng lệnh:")
+        print("    python mlops/scripts/train_all_lite.py")
+        print("Hoặc chạy lại với cờ: --force-retrain")
+        return
 
-    torch.save(unified_ai.state_dict(), "mlops/models/central_unified_ai.pt")
-    print(f"    + Đã lưu: mlops/models/central_unified_ai.pt (Params: {sum(p.numel() for p in unified_ai.parameters()):,})")
-
-    # 3. Lite Autoencoder
-    print(" -> Đang khởi tạo Autoencoder (48 -> 16 -> 48)...")
-    ae = MultiStationDeepAutoencoder(in_features=48, latent_dim=16)
-    torch.save(ae.state_dict(), "mlops/models/central_autoencoder.pt")
-    print(f"    + Đã lưu: mlops/models/central_autoencoder.pt (Params: {sum(p.numel() for p in ae.parameters()):,})")
-
-    print("\n -> Tất cả checkpoint Lite cho Pi 5 đã được tạo thành công!")
+    print("\n-> Đang kích hoạt quy trình huấn luyện thực thụ qua train_all_lite.py...")
+    from mlops.scripts.train_all_lite import main as run_train_all
+    run_train_all()
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Quản lý và bảo vệ Checkpoint AI Lite")
+    parser.add_argument("--force-retrain", action="store_true", help="Buộc huấn luyện lại toàn bộ mô hình với dữ liệu thực")
+    args = parser.parse_args()
+    check_or_train_lite_models(force_retrain=args.force_retrain)

@@ -9,9 +9,9 @@
       "parameters": 833,
       "quantization": "Full INT8 Static Quantization (0 Byte Heap RAM)",
       "flash_footprint_bytes": 784,
-      "test_r2": 0.957,
+      "test_r2": 0.81853,
       "test_rmse_ugm3": 11.23,
-      "test_mae_ugm3": 3.12,
+      "test_mae_ugm3": 5.86554,
       "status": "TRAINED & QUANTIZED (Ready for ESP32 Flash)"
     },
     "M2_Forecaster_Pi5": {
