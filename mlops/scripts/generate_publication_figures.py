@@ -286,8 +286,8 @@ def generate_fig2_resblock(save_path: str):
 
     draw_arrow(29, 74.5, 29, 67.5, color=CLR_ACCENT, lw=2.2)
 
-    fork_circle = Circle((29, 67.5), 1.0, facecolor=CLR_ACCENT, edgecolor="#FFFFFF", lw=1.5, zorder=6)
-    ax.add_patch(fork_circle)
+    branch_circle = Circle((29, 67.5), 1.0, facecolor=CLR_ACCENT, edgecolor="#FFFFFF", lw=1.5, zorder=6)
+    ax.add_patch(branch_circle)
     ax.text(31.5, 67.5, "Rẽ nhánh (Fork)", fontsize=8.5, fontweight="bold", color=CLR_ACCENT, va="center")
 
     draw_arrow(29, 67.5, 29, 57.5, color=CLR_PRIMARY, lw=2.2)

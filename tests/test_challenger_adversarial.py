@@ -143,8 +143,8 @@ class TestAdversarialSwelling:
 
         mask_80 = rhs > 80.0
         r2_80, mae_80, rmse_80 = calc_metrics(y_true[mask_80], y_raw[mask_80])
-        corr_80 = float(np.corrcoef(y_true[mask_80], y_raw[mask_80])[0, 1])
-        print(f"High RH (>80%) Raw Baseline: N={np.sum(mask_80)} | R²={r2_80:.4f} | MAE={mae_80:.2f} µg/m³ | RMSE={rmse_80:.2f} µg/m³ | Pearson r={corr_80:.4f}")
+        correlation_rh80 = float(np.corrcoef(y_true[mask_80], y_raw[mask_80])[0, 1])
+        print(f"High RH (>80%) Raw Baseline: N={np.sum(mask_80)} | R²={r2_80:.4f} | MAE={mae_80:.2f} µg/m³ | RMSE={rmse_80:.2f} µg/m³ | Pearson r={correlation_rh80:.4f}")
 
         # Verification contracts
         assert 0.20 <= r2_overall <= 0.70, f"Raw baseline R² {r2_overall:.4f} not in [0.20, 0.70]"

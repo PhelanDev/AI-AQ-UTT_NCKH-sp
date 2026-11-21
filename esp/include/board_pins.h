@@ -58,7 +58,7 @@ extern "C" {
 // ============================================================================
 // Hardware Static Assertions & Octal PSRAM (GPIO33..37) Conflict Prevention
 // ============================================================================
-#define IS_OCTAL_PSRAM_PIN(pin) ((pin) >= 33 && (pin) <= 37)
+#define IS_OCTAL_PSRAM_PIN(gpio_num) ((gpio_num) >= 33 && (gpio_num) <= 37)
 
 static_assert(!IS_OCTAL_PSRAM_PIN(PIN_PMS1_RX), "PIN_PMS1_RX collides with Octal PSRAM GPIO33..37");
 static_assert(!IS_OCTAL_PSRAM_PIN(PIN_PMS1_TX), "PIN_PMS1_TX collides with Octal PSRAM GPIO33..37");

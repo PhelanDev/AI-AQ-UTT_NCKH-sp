@@ -118,8 +118,8 @@ class TestM3CentralAIEmpiricalHarness:
         assert len(negative_24h_epochs) == 0, f"Found negative R²(+24h) in epochs: {negative_24h_epochs}"
 
         # Audit converged epochs (epochs >= 16) for positive R² across all horizons
-        converged_rows = [r for r in rows if int(r["epoch"]) >= 16]
-        for r in converged_rows:
+        converged_epochs = [r for r in rows if int(r["epoch"]) >= 16]
+        for r in converged_epochs:
             ep = int(r["epoch"])
             for h in horizons:
                 assert float(r[f"r2_{h}"]) > 0.0, f"Converged Epoch {ep} has non-positive R² on +{h}"

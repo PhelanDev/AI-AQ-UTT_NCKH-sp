@@ -152,14 +152,14 @@ int main() {
         // Verify gate opens fully at CO2 >= 800
         bool is_anom = false;
         float pm_in = 100.0f;
-        float pred_smoke_gate = tinyml_predict_pm25_multisensor(pm_in, pm_in, pm_in * 1.3f, 20.0f, 40.0f, 800.0f, 200.0f, &is_anom);
+        float smoke_gate_prediction = tinyml_predict_pm25_multisensor(pm_in, pm_in, pm_in * 1.3f, 20.0f, 40.0f, 800.0f, 200.0f, &is_anom);
         float c_pred_raw = tinyml_infer_c_factor_multisensor(pm_in, 0.0f, 100.0f / (pm_in * 1.3f), 20.0f, 40.0f, tinyml_calc_dew_point(20.0f, 40.0f), 800.0f, 200.0f);
         float expected_pm = pm_in * c_pred_raw;
 
         printf(" -> Gate check at CO2=800, RH=40%%: pred=%.4f, expected=%.4f (delta=%.6f)\n",
-               pred_smoke_gate, expected_pm, fabsf(pred_smoke_gate - expected_pm));
+               smoke_gate_prediction, expected_pm, fabsf(smoke_gate_prediction - expected_pm));
 
-        if (fabsf(pred_smoke_gate - expected_pm) > 1e-3f) {
+        if (fabsf(smoke_gate_prediction - expected_pm) > 1e-3f) {
             printf("    FAIL: Gate did not open fully (w_del != 1.0)!\n");
             total_failures++;
         } else {

@@ -367,13 +367,13 @@ def create_focused_ai_report():
     add_h1("5. KẾT QUẢ THỰC NGHIỆM ĐỐI CHUẨN ĐẦU TIÊN")
     add_para("Mô hình sau khi hoàn thiện được đánh giá đối chứng độc lập trên tập dữ liệu thực tế tại hành lang giao thông Nguyễn Trãi, quận Thanh Xuân, Hà Nội:")
 
-    eval_table = [
+    evaluation_table = [
         ("Cảm biến thô chưa qua AI", "-9.76", "75.60 µg/m³", "121.08 µg/m³", "Đo ảo cực nặng do hơi nước, số liệu vô giá trị"),
         ("Mô hình nền tảng US EPA", "0.77", "11.21 µg/m³", "17.82 µg/m³", "Chỉ đúng ngày khô, gặp nồm ẩm vẫn lệch nhiều"),
         ("Mô hình TinyML của đề tài", "0.9968", "1.25 µg/m³", "2.09 µg/m³", "Tiệm cận số đo của trạm chuẩn tham chiếu"),
         ("Đánh giá riêng đợt nồm ẩm (RH > 75%)", "0.9966", "1.06 µg/m³", "2.03 µg/m³", "Triệt tiêu hoàn toàn hiện tượng phồng hạt hơi nước")
     ]
-    create_table(["Trạng thái xử lý", "Hệ số R²", "Sai số MAE", "Sai số RMSE", "Đánh giá thực tế"], eval_table,
+    create_table(["Trạng thái xử lý", "Hệ số R²", "Sai số MAE", "Sai số RMSE", "Đánh giá thực tế"], evaluation_table,
                  col_widths=[Inches(2.1), Inches(0.8), Inches(1.1), Inches(1.1), Inches(1.4)])
 
     add_h2("Chỉ số tiêu thụ tài nguyên thực tế trên chip ESP32-S3:")

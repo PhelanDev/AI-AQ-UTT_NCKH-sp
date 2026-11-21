@@ -119,8 +119,8 @@ def generate_fig1_pil():
     draw_down_arrow(draw, W / 2, p_conn_y + 55, p_conn_y + 88, color="#2563EB", width=3)
 
     y2 = p_conn_y + 88
-    h_card2 = 440
-    draw.rounded_rectangle([45, y2, W - 45, y2 + h_card2], radius=20, fill="#F8FAFC", outline="#0D9488", width=3)
+    detail_card_height = 440
+    draw.rounded_rectangle([45, y2, W - 45, y2 + detail_card_height], radius=20, fill="#F8FAFC", outline="#0D9488", width=3)
 
     draw.rounded_rectangle([65, y2 + 20, W - 65, y2 + 80], radius=12, fill="#0F766E")
     tag2 = "TẦNG 2: MÁY CHỦ BIÊN CỤC BỘ — RASPBERRY PI 5 (8GB RAM)"

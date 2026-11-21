@@ -93,7 +93,7 @@ def export_multisensor_int8(
     b_in = state_dict["fc_in.bias"].cpu().numpy()
     # Bias compensation
     w_in_deq = w_in_int8.astype(np.float32) * scale_in
-    b_in_calib = b_in - (w_in_deq - w_in) @ np.mean(calib_X, axis=0)
+    calibrated_input_bias = b_in - (w_in_deq - w_in) @ np.mean(calib_X, axis=0)
 
     # Forward qua tầng 1
     h0 = np.maximum(0.0, calib_X @ w_in.T + b_in)
@@ -145,12 +145,12 @@ def export_multisensor_int8(
         f.write("#define TINYML_NUM_RES_BLOCKS 2\n\n")
 
         f.write("// Ngưỡng Min/Max chuẩn hóa dữ liệu đầu vào [pm_avg, diff_pm, r_pm, temp, rh, dew_point, co2, gas_proxy]\n")
-        f.write(f"static const float TINYML_X_MIN[TINYML_INPUT_DIM] = {{\n{format_1d_array(x_min, per_line=4)}\n}};\n\n")
+        f.write(f"static const float TINYML_FEATURE_MIN[TINYML_INPUT_DIM] = {{\n{format_1d_array(x_min, per_line=4)}\n}};\n\n")
         f.write(f"static const float TINYML_X_MAX[TINYML_INPUT_DIM] = {{\n{format_1d_array(x_max, per_line=4)}\n}};\n\n")
 
         f.write(f"// Tầng 1: fc_in (8 -> 96)\n")
         f.write(f"static const float FC_IN_SCALE = {scale_in:.9f}f;\n")
-        f.write(f"static const float FC_IN_BIAS[TINYML_HIDDEN_DIM] = {{\n{format_1d_array(b_in_calib)}\n}};\n")
+        f.write(f"static const float FC_IN_BIAS[TINYML_HIDDEN_DIM] = {{\n{format_1d_array(calibrated_input_bias)}\n}};\n")
         f.write(f"static const int8_t FC_IN_WEIGHT[TINYML_HIDDEN_DIM][TINYML_INPUT_DIM] = {{\n")
         f.write(format_int8_array(w_in_int8) + "\n};\n\n")
 

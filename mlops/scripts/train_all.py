@@ -19,9 +19,9 @@ def run_step(step_num: int, title: str, cmd: list):
     print("\n" + "=" * 80)
     print(f"[{step_num}/5] {title}")
     print("=" * 80)
-    start_t = time.time()
+    step_started_at = time.time()
     res = subprocess.run(cmd, shell=True)
-    elapsed = time.time() - start_t
+    elapsed = time.time() - step_started_at
     if res.returncode != 0:
         print(f"\n[LỖI] Bước {step_num} thất bại với mã lỗi {res.returncode}!")
         sys.exit(res.returncode)

@@ -28,15 +28,15 @@ def check_or_train_lite_models(force_retrain: bool = False):
 
     os.makedirs("mlops/models", exist_ok=True)
     
-    forecaster_pt = Path("mlops/models/central_forecaster.pt")
+    forecaster_checkpoint = Path("mlops/models/central_forecaster.pt")
     unified_pt = Path("mlops/models/central_unified_ai.pt")
     autoencoder_pt = Path("mlops/models/central_autoencoder.pt")
 
-    all_exist = forecaster_pt.exists() and unified_pt.exists() and autoencoder_pt.exists()
+    all_exist = forecaster_checkpoint.exists() and unified_pt.exists() and autoencoder_pt.exists()
 
     if all_exist and not force_retrain:
         print("[AN TOÀN] Các checkpoint mô hình trung tâm đã tồn tại và được bảo vệ:")
-        print(f"  + Forecaster  : {forecaster_pt} ({forecaster_pt.stat().st_size:,} bytes)")
+        print(f"  + Forecaster  : {forecaster_checkpoint} ({forecaster_checkpoint.stat().st_size:,} bytes)")
         print(f"  + Unified AI  : {unified_pt} ({unified_pt.stat().st_size:,} bytes)")
         print(f"  + Autoencoder : {autoencoder_pt} ({autoencoder_pt.stat().st_size:,} bytes)")
         print("\n[CHÚ Ý] Không ghi đè trọng số ngẫu nhiên lên artifact đang triển khai.")

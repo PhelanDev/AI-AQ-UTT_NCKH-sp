@@ -128,8 +128,8 @@ class TestAdversarialBoundaryTransitions:
         assert delta_220 <= 2.05, f"Delta at 220 ug/m3 should be <= 2.05, got {delta_220}"
 
         # Confirm continuity: the derivative is continuous everywhere (no jump)
-        rh_grid = np.linspace(59.9, 60.1, 21)
-        preds = [predict_calibrated_pm25(loaded_model, 250.0, 2.0, 0.70, temp, float(r), compute_dew_point(temp, float(r)), co2, gas)[1] for r in rh_grid]
+        humidity_grid = np.linspace(59.9, 60.1, 21)
+        preds = [predict_calibrated_pm25(loaded_model, 250.0, 2.0, 0.70, temp, float(r), compute_dew_point(temp, float(r)), co2, gas)[1] for r in humidity_grid]
         step_diffs = np.abs(np.diff(preds))
         # Each fine step across the 21 points should be tiny (< 0.15 ug/m3)
         assert np.max(step_diffs) < 0.15, f"Discontinuity detected in fine grid! max step = {np.max(step_diffs)}"

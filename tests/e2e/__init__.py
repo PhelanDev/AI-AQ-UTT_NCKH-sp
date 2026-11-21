@@ -86,8 +86,8 @@ def oracle_magnus_tetens(temp: float, rh: float) -> float:
         alpha(T, RH) = (17.27 * T) / (237.7 + T) + ln(RH / 100.0)
         T_dp = (237.7 * alpha) / (17.27 - alpha)
     """
-    rh_clamped = max(1e-4, min(100.0, rh))
-    alpha = (17.27 * temp) / (237.7 + temp) + math.log(rh_clamped / 100.0)
+    bounded_humidity = max(1e-4, min(100.0, rh))
+    alpha = (17.27 * temp) / (237.7 + temp) + math.log(bounded_humidity / 100.0)
     denom = 17.27 - alpha
     if abs(denom) < 1e-9:
         return temp

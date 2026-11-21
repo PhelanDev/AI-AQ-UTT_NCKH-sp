@@ -107,6 +107,8 @@ class TestWebServerEndpoints:
             data = json.loads(resp.read().decode("utf-8"))
             assert data["status"] == "OK"
             assert data["version"] == "5.0"
+            assert len(data["build_id"]) == 16
+            assert all(char in "0123456789abcdef" for char in data["build_id"])
             assert "UTT" in data.get("prototype_station", "")
             assert "uptime_seconds" in data
 
@@ -180,8 +182,8 @@ class TestWebServerEndpoints:
     def test_api_trigger_cycle_post(self, test_server):
         """Kiểm tra API kích hoạt tính toán chu kỳ mới: POST /api/trigger_cycle."""
         url = f"{test_server}/api/trigger_cycle"
-        post_data = json.dumps({"reason": "live_nckh_demo"}).encode("utf-8")
-        req = urllib.request.Request(url, data=post_data, headers={"Content-Type": "application/json"})
+        request_body = json.dumps({"reason": "live_nckh_demo"}).encode("utf-8")
+        req = urllib.request.Request(url, data=request_body, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=3.0) as resp:
             assert resp.status == 200
             data = json.loads(resp.read().decode("utf-8"))

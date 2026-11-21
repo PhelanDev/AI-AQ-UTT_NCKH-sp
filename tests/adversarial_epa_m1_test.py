@@ -169,8 +169,8 @@ def test_chronological_data_leakage():
     # Are any identical (dt, site, sensor) tuples in both train and test?
     train_keys = set((r["dt"], r["site"], r["sensor"]) for r in naive_train)
     test_keys = set((r["dt"], r["site"], r["sensor"]) for r in naive_test)
-    exact_leak = train_keys.intersection(test_keys)
-    print(f"Exact (dt, site, sensor) tuple leakage: {len(exact_leak)} samples")
+    exact_overlap_count = train_keys.intersection(test_keys)
+    print(f"Exact (dt, site, sensor) tuple leakage: {len(exact_overlap_count)} samples")
 
     # Now check what happens under a TRUE chronological split
     print("\n--- Evaluating under Strict Chronological Split (Sorted by dt) ---")

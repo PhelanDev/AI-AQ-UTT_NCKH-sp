@@ -252,7 +252,7 @@ def plot_comprehensive_evaluation(
     ax1_twin = ax1.twinx()
 
     epochs = history["epoch"]
-    l1 = ax1.plot(epochs, history["train_loss"], color="#1E40AF", lw=2.2, label="Train Huber Loss")
+    train_loss_lines = ax1.plot(epochs, history["train_loss"], color="#1E40AF", lw=2.2, label="Train Huber Loss")
     l2 = ax1.plot(epochs, history["test_loss"], color="#DC2626", lw=2.0, ls="--", label="Test Huber Loss (Unseen)")
 
     l3 = ax1_twin.plot(epochs, history["test_mae"], color="#059669", lw=1.8, ls="-.", label="Test MAE (µg/m³)")
@@ -262,7 +262,7 @@ def plot_comprehensive_evaluation(
     ax1.set_ylabel("Huber Loss (δ = 4.0)", fontsize=10.5, fontweight="bold", color="#1E40AF")
     ax1_twin.set_ylabel("Error Metric (µg/m³)", fontsize=10.5, fontweight="bold", color="#059669")
 
-    lines = l1 + l2 + l3 + l4
+    lines = train_loss_lines + l2 + l3 + l4
     labels = [l.get_label() for l in lines]
     ax1.legend(lines, labels, loc="upper right", fontsize=8.5, framealpha=0.92)
     ax1.set_title(f"(a) Quá Trình Huấn Luyện & Kiểm Thử Kháng Nhiễu ({len(history['epoch'])} Epochs)", fontsize=11.5, fontweight="bold", color="#0F172A", pad=8)

@@ -48,8 +48,8 @@ def fetch_station_data(station: Dict, past_days: int = 90) -> List[Dict]:
     req_headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) NCKH-AirQuality-Scout/1.0"}
 
     # Fetch Air Quality
-    req_aq = urllib.request.Request(aq_url, headers=req_headers)
-    with urllib.request.urlopen(req_aq, timeout=15) as resp:
+    air_quality_request = urllib.request.Request(aq_url, headers=req_headers)
+    with urllib.request.urlopen(air_quality_request, timeout=15) as resp:
         aq_data = json.loads(resp.read().decode())
 
     # Fetch Weather

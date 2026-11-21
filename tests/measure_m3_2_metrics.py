@@ -9,9 +9,9 @@ from pi.central_engine import CentralAIEngine
 def create_clean_data(seed=123):
     rng = np.random.default_rng(seed)
     hist = np.full((24, 8), 42.0, dtype=np.float32) + rng.normal(0, 3.0, size=(24, 8)).astype(np.float32)
-    curr = np.zeros((8, 6), dtype=np.float32)
+    current_features = np.zeros((8, 6), dtype=np.float32)
     for i in range(8):
-        curr[i] = [
+        current_features[i] = [
             42.0 + rng.normal(0, 3.5),
             58.0 + rng.normal(0, 4.5),
             26.0 + rng.normal(0, 0.8),
@@ -19,7 +19,7 @@ def create_clean_data(seed=123):
             2.2,
             115.0,
         ]
-    return hist, curr
+    return hist, current_features
 
 hist_clean, curr_clean = create_clean_data(123)
 eng_clean = CentralAIEngine()

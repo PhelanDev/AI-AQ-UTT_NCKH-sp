@@ -66,11 +66,11 @@ def download_and_parse_station(city: str, station: dict) -> list:
         f"&format=csv"
     )
 
-    aq_text = fetch_csv(aq_url)
+    air_quality_text = fetch_csv(aq_url)
     wx_text = fetch_csv(wx_url)
 
     # Parse AQ
-    aq_lines = [line.strip() for line in aq_text.splitlines() if line.strip()]
+    aq_lines = [line.strip() for line in air_quality_text.splitlines() if line.strip()]
     aq_start = 0
     for i, l in enumerate(aq_lines):
         if l.startswith("time,pm10"):

@@ -46,14 +46,14 @@ def filter_warmup_and_anomalies(raw_node_records):
     raw_node_records: list of dict {'timestamp', 'pm1', 'pm2', 'temp', 'rh', 'uptime_sec'}
     """
     valid_records = []
-    dropped_warmup = 0
+    warmup_drop_count = 0
     dropped_discrepancy = 0
 
     for r in raw_node_records:
         uptime = r.get("uptime_sec", 60.0)
 
         if uptime < 30.0:
-            dropped_warmup += 1
+            warmup_drop_count += 1
             continue
 
         diff = abs(r["pm1"] - r["pm2"])
@@ -63,7 +63,7 @@ def filter_warmup_and_anomalies(raw_node_records):
 
         valid_records.append(r)
 
-    print(f" -> Lọc làm ấm: Đã loại bỏ {dropped_warmup} mẫu (< 30s khởi động).")
+    print(f" -> Lọc làm ấm: Đã loại bỏ {warmup_drop_count} mẫu (< 30s khởi động).")
     print(f" -> Lọc lệch buồng đo: Đã loại bỏ {dropped_discrepancy} mẫu (|PM1 - PM2| > 25 ug/m3).")
     print(f" -> Số mẫu sạch hợp lệ: {len(valid_records)} / {len(raw_node_records)} mẫu.")
     return valid_records

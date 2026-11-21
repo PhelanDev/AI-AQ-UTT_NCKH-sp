@@ -171,7 +171,7 @@ def main():
 
     tot_checked = sum(r["count"] for r in results)
     tot_horizons = sum(r["total_horizons"] for r in results)
-    tot_crossings = sum(r["quantile_crossings"] for r in results)
+    crossing_count = sum(r["quantile_crossings"] for r in results)
     tot_neg = sum(r["negative_p10_count"] for r in results)
     tot_nan = sum(r["nan_inf_count"] for r in results)
     tot_exc = sum(r["unhandled_exceptions"] for r in results)
@@ -184,7 +184,7 @@ def main():
     print(f"Total Telemetry Frames Processed: {tot_checked:,}")
     print(f"Total Forecast Horizons Audited: {tot_horizons:,} (24 per frame)")
     print(f"Total Elapsed Time: {elapsed:.2f}s ({elapsed/tot_checked*1000:.2f} ms/frame)")
-    print(f"Quantile Crossings (P10 > P50 or P50 > P90): {tot_crossings} (Target: 0)")
+    print(f"Quantile Crossings (P10 > P50 or P50 > P90): {crossing_count} (Target: 0)")
     print(f"Negative P10 Predictions (P10 < 0.0): {tot_neg} (Target: 0)")
     print(f"NaN / Inf Quantile Outputs: {tot_nan} (Target: 0)")
     print(f"Unhandled Runtime Exceptions: {tot_exc} (Target: 0)")
@@ -193,7 +193,7 @@ def main():
     print("==================================================================")
 
     assert tot_checked == total_frames, f"Expected {total_frames} frames, got {tot_checked}"
-    assert tot_crossings == 0, f"FAILED: {tot_crossings} quantile crossings detected!"
+    assert crossing_count == 0, f"FAILED: {crossing_count} quantile crossings detected!"
     assert tot_neg == 0, f"FAILED: {tot_neg} negative P10 values detected!"
     assert tot_nan == 0, f"FAILED: {tot_nan} NaN/Inf values detected!"
     assert tot_exc == 0, f"FAILED: {tot_exc} unhandled exceptions detected!"

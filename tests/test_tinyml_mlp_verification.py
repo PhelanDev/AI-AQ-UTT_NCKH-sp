@@ -16,8 +16,8 @@ def test_mlp_model_data_parameters_and_int8_weights():
     # Layer 2: 32*16 (weights) + 16 (biases) = 528
     # Layer Out: 16*1 (weights) + 1 (biases) = 17
     # Tổng cộng = 288 + 528 + 17 = 833 params
-    total_params = (8 * 32 + 32) + (32 * 16 + 16) + (16 * 1 + 1)
-    assert total_params == 833, f"Expected 833 params, got {total_params}"
+    parameter_count = (8 * 32 + 32) + (32 * 16 + 16) + (16 * 1 + 1)
+    assert parameter_count == 833, f"Expected 833 params, got {parameter_count}"
 
     # Kiểm tra định dạng trọng số INT8 và Scale
     assert "int8_t FC1_WEIGHT" in content

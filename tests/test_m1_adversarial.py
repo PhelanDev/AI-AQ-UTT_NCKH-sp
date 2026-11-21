@@ -102,8 +102,8 @@ class TestNumericalBoundaries:
         dew_100 = calc_dew_point_magnus_tetens(temp, 100.0)
         assert math.isclose(dew_100, temp, abs_tol=1e-3), f"At 100% RH, dew point should equal temp: {dew_100}"
 
-        dew_105 = calc_dew_point_magnus_tetens(temp, 105.0)
-        assert np.isfinite(dew_105)
+        supersaturated_dew_point = calc_dew_point_magnus_tetens(temp, 105.0)
+        assert np.isfinite(supersaturated_dew_point)
 
         swelling = HygroscopicSwellingModel()
         gf_100 = swelling.growth_factor(100.0)

@@ -66,8 +66,8 @@ def test_file_validity():
             info = zf.getinfo(mf)
             print(f"  - {mf}: {info.file_size:,} bytes")
 
-    loaded_doc = docx.Document(DOCX_PATH)
-    assert loaded_doc is not None, "Failed to load document via python-docx"
+    opened_document = docx.Document(DOCX_PATH)
+    assert opened_document is not None, "Failed to load document via python-docx"
     print("python-docx load & XML tree traversal: PASSED (Clean parse, no errors)")
 
 def test_structure(doc):

@@ -315,8 +315,8 @@ def run_test_5_failure_injection():
     curr_sat = np.zeros(48, dtype=np.float32)
     for s in range(8):
         curr_sat[s*6:(s+1)*6] = [35.0, 45.0, 20.0, 100.0, 0.0, 0.0]
-    res_sat = engine.process_telemetry_frame(np.full((24, 8), 35.0, dtype=np.float32), curr_sat)
-    assert not math.isnan(res_sat["anomaly"]["anomaly_score"]), "NaN in saturated RH score"
+    saturated_result = engine.process_telemetry_frame(np.full((24, 8), 35.0, dtype=np.float32), curr_sat)
+    assert not math.isnan(saturated_result["anomaly"]["anomaly_score"]), "NaN in saturated RH score"
     print("Case 3 (100% RH & 0.0 m/s wind): Handled gracefully, no divide by zero.")
 
     # Case 4: Non-monotonic history (wild jitter: alternating 10 and 300 ug/m3)

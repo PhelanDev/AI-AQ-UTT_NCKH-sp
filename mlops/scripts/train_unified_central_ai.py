@@ -268,8 +268,8 @@ def plot_training_report(log_history, save_png_path="docs/figures/fig_central_ai
     tr_r2 = [x["train_r2"] for x in log_history]
     val_r2 = [x["val_r2"] for x in log_history]
 
-    best_entry = min(log_history, key=lambda x: x["val_loss"])
-    best_ep = best_entry["epoch"]
+    best_epoch_metrics = min(log_history, key=lambda x: x["val_loss"])
+    best_ep = best_epoch_metrics["epoch"]
 
     # Tạo đồ thị 2 panel kinh điển đúng chuẩn Keras/PyTorch style
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), dpi=150)

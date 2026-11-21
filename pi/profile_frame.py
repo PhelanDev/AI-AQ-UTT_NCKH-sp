@@ -13,8 +13,8 @@ ae_onnx = _resolve_model_path("mlops/models/central_autoencoder.onnx")
 engine.onnx_forecaster_session = ort.InferenceSession(fc_onnx, sess_options=sess_opts, providers=["CPUExecutionProvider"])
 engine.onnx_autoencoder_session = ort.InferenceSession(ae_onnx, sess_options=sess_opts, providers=["CPUExecutionProvider"])
 
-t_idx = np.arange(24, dtype=np.float32)
-base_curve = 55.0 + 3.0 * np.sin(2.0 * np.pi * t_idx / 24.0)
+hour_indices = np.arange(24, dtype=np.float32)
+base_curve = 55.0 + 3.0 * np.sin(2.0 * np.pi * hour_indices / 24.0)
 history_24x8 = np.tile(base_curve[:, None], (1, 8)).astype(np.float32)
 current_48d = np.tile(np.array([55.0, 75.0, 26.0, 75.0, 680.0, 130.0], dtype=np.float32), 8)
 

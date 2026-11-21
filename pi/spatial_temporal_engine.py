@@ -84,8 +84,8 @@ def compute_cross_correlation_matrix(
 
     c0 = norm_data.T @ norm_data
     e0 = np.sum(norm_data**2, axis=0)
-    denom0 = np.sqrt(e0[:, None] * e0[None, :]) + 1e-12
-    all_corrs[zero_idx] = c0 / denom0
+    lag_zero_denominator = np.sqrt(e0[:, None] * e0[None, :]) + 1e-12
+    all_corrs[zero_idx] = c0 / lag_zero_denominator
 
     for k in range(1, max_lag + 1):
         x = norm_data[:T - k, :]

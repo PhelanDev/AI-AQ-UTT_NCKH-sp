@@ -344,8 +344,8 @@ class CentralAIEngine:
 
         import onnxruntime as ort
 
-        sess_forecaster = ort.InferenceSession(forecaster_path, providers=["CPUExecutionProvider"])
-        onnx_forecast_out = sess_forecaster.run(None, {"input_timeseries": dummy_forecast_in.cpu().numpy()})[0]
+        forecaster_session = ort.InferenceSession(forecaster_path, providers=["CPUExecutionProvider"])
+        onnx_forecast_out = forecaster_session.run(None, {"input_timeseries": dummy_forecast_in.cpu().numpy()})[0]
         max_diff_forecast = float(np.max(np.abs(torch_forecast_out - onnx_forecast_out)))
 
         sess_ae = ort.InferenceSession(autoencoder_path, providers=["CPUExecutionProvider"])

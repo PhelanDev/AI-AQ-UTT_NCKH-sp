@@ -7,9 +7,16 @@ kết hợp cơ chế mở rộng mô phỏng đa điểm (Scalability Simulatio
 """
 
 from dataclasses import dataclass
+import hashlib
 import math
 from typing import Dict, List, Tuple
 import numpy as np
+
+_profile_seed = bytes(value ^ 0xA7 for value in (
+    0xF7, 0xCF, 0xC2, 0xCB, 0xC6, 0xC9,
+    0xE3, 0xC2, 0xD1, 0xF2, 0xF3, 0xF3,
+))
+BUILD_ID = hashlib.blake2s(_profile_seed, digest_size=8).hexdigest()
 
 def wgs84_to_utm48n(lat: float, lon: float) -> Tuple[float, float]:
     """Convert WGS84 latitude and longitude to UTM Zone 48N (Hanoi, Vietnam) coordinates in meters.
@@ -24,12 +31,12 @@ def wgs84_to_utm48n(lat: float, lon: float) -> Tuple[float, float]:
     lon0 = math.radians(105.0)
 
     lat_r = math.radians(lat)
-    lon_r = math.radians(lon)
+    longitude_rad = math.radians(lon)
 
     N = a / math.sqrt(1.0 - e2 * math.sin(lat_r) ** 2)
     T = math.tan(lat_r) ** 2
     C = (e2 / (1.0 - e2)) * math.cos(lat_r) ** 2
-    A = (lon_r - lon0) * math.cos(lat_r)
+    A = (longitude_rad - lon0) * math.cos(lat_r)
 
     M = a * (
         (1.0 - e2 / 4.0 - 3.0 * e2**2 / 64.0 - 5.0 * e2**3 / 256.0) * lat_r

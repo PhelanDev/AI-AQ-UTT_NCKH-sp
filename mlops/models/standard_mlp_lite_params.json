@@ -1,27 +1,69 @@
 {
   "total_params": 833,
+  "training_samples": 103494,
+  "validation_samples": 10349,
+  "simulation_train_samples": 88494,
+  "epa_train_samples": 15000,
+  "simulation_test_samples": 5674,
+  "epa_test_samples": 3000,
+  "best_validation_epoch": 31,
+  "best_validation_score": -0.46509,
+  "validation_score_metric": "weighted_r2 (0.75 simulation, 0.25 EPA)",
+  "test_samples": 8674,
+  "weight_quantization": "symmetric per-layer INT8; float32 activations and biases",
+  "training_objective": "gate-weighted direct C SmoothL1 + firmware-path PM SmoothL1",
   "flash_footprint_bytes": 784,
-  "test_r2": 0.81853,
-  "test_mae_ugm3": 5.86554,
-  "test_rmse_ugm3": 11.2166,
+  "weight_flash_bytes": 784,
+  "bias_flash_bytes": 196,
+  "normalization_flash_bytes": 64,
+  "scale_flash_bytes": 12,
+  "model_constants_bytes": 1056,
+  "test_r2": 0.73884,
+  "test_mae_ugm3": 7.09007,
+  "test_rmse_ugm3": 13.45308,
+  "metrics_overall_test": {
+    "r2": 0.73884,
+    "mae": 7.09007,
+    "rmse": 13.45308
+  },
+  "metrics_simulation_test": {
+    "r2": 0.63827,
+    "mae": 8.78948,
+    "rmse": 16.06423
+  },
+  "metrics_epa_test": {
+    "r2": 0.07873,
+    "mae": 3.87592,
+    "rmse": 5.93402
+  },
+  "metrics_validation_simulation": {
+    "r2": -0.59853,
+    "mae": 23.32313,
+    "rmse": 37.76606
+  },
+  "metrics_validation_epa": {
+    "r2": -0.06479,
+    "mae": 3.63643,
+    "rmse": 5.34699
+  },
   "x_min": [
-    0.5199999809265137,
+    0.5099999904632568,
     0.0,
-    0.15000000596046448,
-    -1.100000023841858,
+    0.10000000149011612,
+    -17.074443817138672,
     1.0,
     -49.66999816894531,
-    393.0,
+    353.0,
     0.0
   ],
   "x_max": [
-    796.3400268554688,
-    209.8000030517578,
+    778.6400146484375,
+    225.52000427246094,
     1.0,
-    41.16999816894531,
-    97.0,
+    43.22222137451172,
+    100.0,
     29.329999923706055,
-    2964.5,
+    2967.5,
     1089.0
   ]
 }

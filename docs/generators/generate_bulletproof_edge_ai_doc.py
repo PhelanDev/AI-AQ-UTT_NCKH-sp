@@ -382,13 +382,13 @@ def generate_bulletproof_report():
     add_h1("6. KẾT QUẢ THỰC NGHIỆM TRÊN ĐỘNG CƠ C++ THEO CÁC KỊCH BẢN")
     add_para("Động cơ C++ nhúng đã được biên dịch và kiểm thử thực tế trên 4 kịch bản thời tiết điển hình, ghi nhận kết quả xử lý chính xác:")
 
-    scenarios_data = [
+    scenario_rows = [
         ("Kịch bản 1: Nồm ẩm mùa xuân", "Độ ẩm 94.5%, Nhiệt độ 20.8°C", "142.0 µg/m³", "43.99 µg/m³", "Triệt tiêu 69% sai số do hơi nước bám vào hạt"),
         ("Kịch bản 2: Giờ cao điểm tan tầm", "Độ ẩm 68.0%, Nhiệt độ 26.0°C", "85.0 µg/m³", "47.68 µg/m³", "Hiệu chuẩn bám sát nồng độ bụi thực tế"),
         ("Kịch bản 3: Ngày nắng khô thoáng", "Độ ẩm 60.0%, Nhiệt độ 30.0°C", "19.75 µg/m³", "18.01 µg/m³", "Cổng hòa trộn giữ nguyên độ nhạy cảm biến gốc"),
         ("Kịch bản 4: Dị thường buồng đo", "Cảm biến 1 lệch cảm biến 2 > 25", "155.0 vs 38.0", "21.76 µg/m³", "Bật cờ dị thường, tự chuyển sang buồng đo sạch")
     ]
-    create_table(["Kịch bản kiểm nghiệm", "Điều kiện môi trường", "Số đo thô", "Số đo sau AI", "Hành vi kỹ thuật của hệ thống"], scenarios_data,
+    create_table(["Kịch bản kiểm nghiệm", "Điều kiện môi trường", "Số đo thô", "Số đo sau AI", "Hành vi kỹ thuật của hệ thống"], scenario_rows,
                  col_widths=[Inches(1.8), Inches(1.6), Inches(0.9), Inches(1.0), Inches(1.2)])
 
     add_h2("Đo đạc tốc độ suy luận thực tế (Thử nghiệm 10.000 lần lặp liên tục):")

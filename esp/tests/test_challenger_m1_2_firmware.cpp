@@ -201,10 +201,10 @@ int main() {
             {subnormal, subnormal, subnormal, subnormal, subnormal, subnormal, subnormal, "Subnormal Underflows (1e-42)"}
         };
 
-        int path_count = sizeof(path_cases) / sizeof(path_cases[0]);
+        int tested_path_count = sizeof(path_cases) / sizeof(path_cases[0]);
         int crash_count = 0;
 
-        for (int i = 0; i < path_count; i++) {
+        for (int i = 0; i < tested_path_count; i++) {
             PathologicalCase& pc = path_cases[i];
             bool anom = false;
 

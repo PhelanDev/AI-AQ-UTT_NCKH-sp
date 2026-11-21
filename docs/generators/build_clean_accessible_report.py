@@ -489,7 +489,7 @@ def create_report():
     add_h2("6.2. Bảng tiêu chí cam kết nghiệm thu định lượng")
     add_p("Đề tài cam kết đạt được các chỉ tiêu định lượng cụ thể sau khi kết thúc quá trình nghiên cứu và thực nghiệm:")
 
-    metrics_rows = [
+    evaluation_rows = [
         ("Hệ số tương quan (R²)",
          "Đo lường mức độ bám sát của số đo sau AI so với trạm đo chuẩn quốc tế.",
          "R² >= 0.90 (tăng mạnh so với cảm biến thô chỉ đạt R² ~ 0.55 - 0.65)."),
@@ -509,7 +509,7 @@ def create_report():
          "Thời gian chip xử lý xong một chu kỳ đọc và hiệu chuẩn nồng độ bụi.",
          "Dưới 0.5 mili-giây (thực tế chạy trên ESP32-S3 240MHz chỉ mất ~0.2 ms).")
     ]
-    create_table(["Chỉ tiêu kỹ thuật", "Ý nghĩa đo lường", "Chỉ số cam kết nghiệm thu"], metrics_rows,
+    create_table(["Chỉ tiêu kỹ thuật", "Ý nghĩa đo lường", "Chỉ số cam kết nghiệm thu"], evaluation_rows,
                  col_widths=[Inches(1.8), Inches(2.3), Inches(2.2)])
 
     add_h1("7. KẾ HOẠCH NGHIÊN CỨU VÀ CÁC MỐC TIẾN ĐỘ DỰ KIẾN")

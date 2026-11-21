@@ -433,14 +433,14 @@ def create_edge_ai_report():
                  col_widths=[Inches(2.2), Inches(0.8), Inches(1.1), Inches(1.1), Inches(1.3)])
 
     add_h2("Đo đạc hiệu năng thực tế trên chip ESP32-S3 N16R8:")
-    bench_table = [
+    benchmark_table = [
         ("Dung lượng bộ nhớ Flash chiếm dụng", "78.4 KB", "< 0.5% Flash 16MB", "Cực kỳ nhỏ gọn"),
         ("Dung lượng bộ nhớ RAM tĩnh (SRAM)", "820 Byte", "< 0.2% RAM nội", "Gần như không đáng kể"),
         ("Bộ nhớ động Heap runtime cấp phát", "0 Byte", "0% nguy cơ rò rỉ RAM", "Chuẩn an toàn nhúng tuyệt đối"),
         ("Thời gian thực thi 1 lần suy luận", "0.32 ms", "Nhân Xtensa LX7 @ 240MHz", "Nhanh gấp 3000 lần chu kỳ đo 1s"),
         ("Công suất tiêu thụ trung bình", "160 mW", "Chạy đầy đủ cả 2 nhân CPU", "Hoạt động bền bỉ với pin mặt trời")
     ]
-    create_table(["Chỉ số phần cứng", "Số liệu đo đạc", "Tỷ lệ chiếm dụng", "Đánh giá"], bench_table,
+    create_table(["Chỉ số phần cứng", "Số liệu đo đạc", "Tỷ lệ chiếm dụng", "Đánh giá"], benchmark_table,
                  col_widths=[Inches(2.3), Inches(1.2), Inches(1.7), Inches(1.3)])
 
     add_h1("6. HƯỚNG DẪN THỰC THI & TÍCH HỢP CODE LÊN ESP32-S3 TỪNG BƯỚC")

@@ -242,7 +242,7 @@ class TinyMLEdgeCalibrator:
 
         dew_point = calc_dew_point_magnus_tetens(t, rh)
 
-        orig_shape = pm_avg.shape
+        input_shape = pm_avg.shape
         flat_pm_avg = pm_avg.ravel()
         flat_diff = diff_pm.ravel()
         flat_t = t.ravel()
@@ -260,7 +260,7 @@ class TinyMLEdgeCalibrator:
             c_pred_tensor = self.model(norm_feat).squeeze(-1)
             c_pred = c_pred_tensor.cpu().numpy()
 
-        c_pred = c_pred.reshape(orig_shape)
+        c_pred = c_pred.reshape(input_shape)
 
         gate = 1.0 / (1.0 + np.exp(-(rh - 55.0) / 6.0))
         c_final = (1.0 - gate) * 0.95 + gate * c_pred

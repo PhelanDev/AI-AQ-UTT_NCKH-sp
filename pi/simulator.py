@@ -80,10 +80,10 @@ class WindFieldOU:
         var = (self.sigma**2 / (2.0 * self.theta)) * max(0.0, 1.0 - math.exp(-2.0 * self.theta * dt))
         std = math.sqrt(max(1e-12, var))
 
-        dW_u = self.rng.randn()
+        wind_u_increment = self.rng.randn()
         dW_v = self.rng.randn()
 
-        self.u = self.u_mean + (self.u - self.u_mean) * decay + std * dW_u
+        self.u = self.u_mean + (self.u - self.u_mean) * decay + std * wind_u_increment
         self.v = self.v_mean + (self.v - self.v_mean) * decay + std * dW_v
 
         speed = math.hypot(self.u, self.v)

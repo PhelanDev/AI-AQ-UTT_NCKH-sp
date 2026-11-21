@@ -13,9 +13,9 @@ int main() {
         TinyML_AnomalyCode code;
         printf("[TEST 1: Chu ky lam am cam bien PMS7003]\n");
 
-        float pm_early = tinyml_predict_pm25_advanced(120.0f, 115.0f, 22.0f, 90.0f, 10.0f, &code);
+        float pm_before_warmup = tinyml_predict_pm25_advanced(120.0f, 115.0f, 22.0f, 90.0f, 10.0f, &code);
         printf(" -> Tai t = 10s (Chua du 30s warm-up): PM = %.2f ug/m3 | AnomalyCode = %d (%s)\n",
-               pm_early, code, code == TINYML_ANOMALY_WARMUP_INCOMPLETE ? "WARMUP_INCOMPLETE -> CHAN KHONG CHO TINYML SUY LUAN" : "ERROR");
+               pm_before_warmup, code, code == TINYML_ANOMALY_WARMUP_INCOMPLETE ? "WARMUP_INCOMPLETE -> CHAN KHONG CHO TINYML SUY LUAN" : "ERROR");
 
         float pm_ready = tinyml_predict_pm25_advanced(120.0f, 115.0f, 22.0f, 90.0f, 35.0f, &code);
         printf(" -> Tai t = 35s (Warm-up hoan tat)   : PM = %.2f ug/m3 | AnomalyCode = %d (%s)\n\n",

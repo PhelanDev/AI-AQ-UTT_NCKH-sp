@@ -1,4 +1,7 @@
 @echo off
+
+setlocal
+set "PYTHON_RUNNER=python"
 chcp 65001 > nul
 echo ===============================================================================
 echo     AIR QUALITY IOT - QUY TRÌNH HUẤN LUYỆN TOÀN BỘ HỆ THỐNG AI (END-TO-END)
@@ -8,7 +11,7 @@ echo ===========================================================================
 echo.
 
 echo [BƯỚC 1/5] Hợp nhất dữ liệu đa cảm biến (BOM: Dual PMS7003, SHT40, S8, SGP41)...
-python mlops/scripts/data_fusion_multisensor.py
+%PYTHON_RUNNER% mlops/scripts/data_fusion_multisensor.py
 if %ERRORLEVEL% NEQ 0 (
     echo [LỖI] Hợp nhất dữ liệu thất bại!
     pause
@@ -17,7 +20,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo [BƯỚC 2/5] Huấn luyện Mô hình 1: MultiSensorResMLP 19.5k (Bù nồm ẩm & Phân biệt khói)...
-python mlops/scripts/train_multisensor_resmlp.py
+%PYTHON_RUNNER% mlops/scripts/train_multisensor_resmlp.py
 if %ERRORLEVEL% NEQ 0 (
     echo [LỖI] Huấn luyện Mô hình 1 thất bại!
     pause
@@ -26,7 +29,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo [BƯỚC 3/5] Lượng tử hóa INT8 và xuất C++ Header (esp/include/model_data.h)...
-python mlops/scripts/quantize_multisensor_int8.py
+%PYTHON_RUNNER% mlops/scripts/quantize_multisensor_int8.py
 if %ERRORLEVEL% NEQ 0 (
     echo [LỖI] Lượng tử hóa thất bại!
     pause
@@ -35,7 +38,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo [BƯỚC 4/5] Huấn luyện Mô hình 2+3: Hierarchical Unified Central AI (104k params, ONNX)...
-python mlops/scripts/train_unified_central_ai.py
+%PYTHON_RUNNER% mlops/scripts/train_unified_central_ai.py
 if %ERRORLEVEL% NEQ 0 (
     echo [LỖI] Huấn luyện Mô hình Trung tâm Phân tầng thất bại!
     pause
@@ -44,7 +47,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo [BƯỚC 5/5] Kiểm thử tự động toàn diện (PyTest + Biên dịch C++ TinyML Engine)...
-python -m pytest tests/test_multisensor_training.py tests/test_unified_central_ai.py -v
+%PYTHON_RUNNER% -m pytest tests/test_multisensor_training.py tests/test_unified_central_ai.py -v
 if %ERRORLEVEL% NEQ 0 (
     echo [CẢNH BÁO] Có test case thất bại!
 )

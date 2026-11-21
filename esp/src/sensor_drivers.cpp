@@ -16,8 +16,8 @@ bool pms7003_parse_frame(const uint8_t *buf, size_t len,
     }
 
     // Check frame length field (standard Plantower frame length is 28 bytes)
-    uint16_t frame_len = ((uint16_t)buf[2] << 8) | buf[3];
-    if (frame_len != PMS7003_PAYLOAD_LEN) {
+    uint16_t payload_length = ((uint16_t)buf[2] << 8) | buf[3];
+    if (payload_length != PMS7003_PAYLOAD_LEN) {
         return false;
     }
 
@@ -77,7 +77,7 @@ uint16_t modbus_crc16(const uint8_t *data, size_t len) {
     return crc;
 }
 
-bool senseair_s8_parse_response(const uint8_t *buf, size_t len, float *out_co2_ppm) {
+bool senseair_s8_parse_response(const uint8_t *buf, size_t len, float *co2_ppm_out) {
     if (!buf || len < 7) {
         return false;
     }
@@ -121,8 +121,8 @@ bool senseair_s8_parse_response(const uint8_t *buf, size_t len, float *out_co2_p
         return false;
     }
 
-    if (out_co2_ppm) {
-        *out_co2_ppm = (float)co2;
+    if (co2_ppm_out) {
+        *co2_ppm_out = (float)co2;
     }
 
     return true;

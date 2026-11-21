@@ -169,7 +169,7 @@ def process_jakarta(aq_src: str, wx_src: str, out_path: str):
 def main():
     beijing_src = r"C:\Users\LEGION\.gemini\antigravity\brain\aa0cd030-2bd2-4db2-b7d0-ac74526c20b2\.system_generated\steps\28\content.md"
     jakarta_aq_src = r"C:\Users\LEGION\.gemini\antigravity\brain\aa0cd030-2bd2-4db2-b7d0-ac74526c20b2\.system_generated\steps\94\content.md"
-    jakarta_wx_src = r"C:\Users\LEGION\.gemini\antigravity\brain\aa0cd030-2bd2-4db2-b7d0-ac74526c20b2\.system_generated\steps\100\content.md"
+    jakarta_weather_source = r"C:\Users\LEGION\.gemini\antigravity\brain\aa0cd030-2bd2-4db2-b7d0-ac74526c20b2\.system_generated\steps\100\content.md"
 
     beijing_out = r"d:\AQ\mlops\data\beijing_hourly_2yr.csv"
     jakarta_out = r"d:\AQ\mlops\data\jakarta_hourly_2yr.csv"
@@ -178,7 +178,7 @@ def main():
     print("    XỬ LÝ DỮ LIỆU ĐA NĂM BẮC KINH VÀ JAKARTA CHO MLOPS PIPELINE")
     print("===============================================================================")
     process_beijing(beijing_src, beijing_out)
-    process_jakarta(jakarta_aq_src, jakarta_wx_src, jakarta_out)
+    process_jakarta(jakarta_aq_src, jakarta_weather_source, jakarta_out)
     print("===============================================================================")
     print("HOÀN TẤT TRÍCH XUẤT 100%!")
 

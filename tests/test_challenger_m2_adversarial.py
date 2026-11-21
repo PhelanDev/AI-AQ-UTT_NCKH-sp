@@ -108,7 +108,7 @@ class TestChallengerM2Monotonicity:
     def test_m2_monotonicity_and_bounds_sampled_adversarial(self):
         """Audit 500 diverse adversarial telemetry frames for zero quantile crossings."""
         rng = np.random.default_rng(seed=42)
-        checked_points = 0
+        points_checked = 0
 
         for i in range(500):
             case = i % 5
@@ -136,13 +136,13 @@ class TestChallengerM2Monotonicity:
 
             assert len(p10) == 24 and len(p50) == 24 and len(p90) == 24
             for h in range(24):
-                checked_points += 1
+                points_checked += 1
                 v10, v50, v90 = p10[h], p50[h], p90[h]
                 assert v10 >= 0.0, f"Negative P10 at frame {i}, horizon {h}: {v10}"
                 assert v10 <= v50 + 1e-6, f"Quantile crossing P10 > P50 at frame {i}, horizon {h}: {v10} > {v50}"
                 assert v50 <= v90 + 1e-6, f"Quantile crossing P50 > P90 at frame {i}, horizon {h}: {v50} > {v90}"
 
-        assert checked_points == 500 * 24
+        assert points_checked == 500 * 24
 
     def test_m2_monotonicity_10000_adversarial_frames_batched(self):
         """Stress-test 10,000 adversarial frames in batches to verify strict 0 <= P10 <= P50 <= P90."""

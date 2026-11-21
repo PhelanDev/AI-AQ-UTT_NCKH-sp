@@ -268,19 +268,19 @@ void st7789_draw_char(uint16_t x, uint16_t y, char c, uint16_t color, uint16_t b
 
 void st7789_draw_string(uint16_t x, uint16_t y, const char *str, uint16_t color, uint16_t bg, uint8_t size) {
     if (!str) return;
-    uint16_t cur_x = x;
+    uint16_t glyph_x = x;
     while (*str) {
-        st7789_draw_char(cur_x, y, *str, color, bg, size);
-        cur_x += 6 * size;
+        st7789_draw_char(glyph_x, y, *str, color, bg, size);
+        glyph_x += 6 * size;
         str++;
     }
 }
 
-void st7789_render_dashboard(const EdgeDisplayPayload *payload) {
-    if (!payload) return;
+void st7789_render_dashboard(const EdgeDisplayPayload *display_data) {
+    if (!display_data) return;
 
-    s_mock_state.rendered_aqi = payload->aqi;
-    s_mock_state.rendered_pm25 = payload->pm25_calibrated;
+    s_mock_state.rendered_aqi = display_data->aqi;
+    s_mock_state.rendered_pm25 = display_data->pm25_calibrated;
 
     // 1. Clear background to Dark Grey / Black
     st7789_fill_rect(0, 0, ST7789_LCD_WIDTH, ST7789_LCD_HEIGHT, RGB565_BLACK);
@@ -290,29 +290,29 @@ void st7789_render_dashboard(const EdgeDisplayPayload *payload) {
     st7789_draw_string(15, 10, "AQ-LITE UTT-54TK", RGB565_WHITE, RGB565_NAVY, 2);
 
     // 3. Central Dynamic VN-AQI Indicator Banner (Height = 70px)
-    uint16_t aqi_color = st7789_get_aqi_color_rgb565(payload->aqi);
+    uint16_t aqi_color = st7789_get_aqi_color_rgb565(display_data->aqi);
     st7789_fill_rect(10, 45, ST7789_LCD_WIDTH - 20, 70, aqi_color);
     char aqi_str[32];
-    snprintf(aqi_str, sizeof(aqi_str), "VN-AQI: %d", payload->aqi);
+    snprintf(aqi_str, sizeof(aqi_str), "VN-AQI: %d", display_data->aqi);
     st7789_draw_string(25, 68, aqi_str, RGB565_BLACK, aqi_color, 3);
 
     // 4. Data Grid Cards (PM2.5, SHT40 T/RH, SenseAir CO2)
     // Left Column: PM2.5 Calibrated & Raw
     st7789_fill_rect(10, 125, 105, 50, RGB565_DARKGREY);
     char pm_str[32];
-    snprintf(pm_str, sizeof(pm_str), "PM:%.1f", payload->pm25_calibrated);
+    snprintf(pm_str, sizeof(pm_str), "PM:%.1f", display_data->pm25_calibrated);
     st7789_draw_string(15, 140, pm_str, RGB565_WHITE, RGB565_DARKGREY, 2);
 
     // Right Column: SHT40 Temperature & Humidity
     st7789_fill_rect(125, 125, 105, 50, RGB565_DARKGREY);
     char env_str[32];
-    snprintf(env_str, sizeof(env_str), "%.0fC/%.0f%%", payload->temp_c, payload->rh_percent);
+    snprintf(env_str, sizeof(env_str), "%.0fC/%.0f%%", display_data->temp_c, display_data->rh_percent);
     st7789_draw_string(130, 140, env_str, RGB565_CYAN, RGB565_DARKGREY, 2);
 
     // Bottom Row: CO2 & Gas Index
     st7789_fill_rect(10, 185, 105, 45, RGB565_DARKGREY);
     char co2_str[32];
-    snprintf(co2_str, sizeof(co2_str), "CO2:%.0f", payload->co2_ppm);
+    snprintf(co2_str, sizeof(co2_str), "CO2:%.0f", display_data->co2_ppm);
     st7789_draw_string(15, 198, co2_str, RGB565_WHITE, RGB565_DARKGREY, 2);
 
     st7789_fill_rect(125, 185, 105, 45, RGB565_DARKGREY);

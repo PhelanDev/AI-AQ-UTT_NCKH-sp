@@ -107,7 +107,7 @@ def main():
     os.makedirs(model_dir, exist_ok=True)
 
     unified_csv = os.path.join(data_dir, "unified_megaset.csv")
-    tx_csv = os.path.join(data_dir, "hanoi_thanhxuan_localized_dataset.csv")
+    thanh_xuan_csv = os.path.join(data_dir, "hanoi_thanhxuan_localized_dataset.csv")
 
     if not os.path.exists(unified_csv):
         print(f"Lỗi: Không tìm thấy {unified_csv}. Vui lòng chạy data_fusion_megaset.py trước.")
@@ -118,7 +118,7 @@ def main():
     print("=" * 88)
 
     # 1. Nạp tập dữ liệu địa phương hóa Thanh Xuân (Hold-out test set độc lập)
-    X_tx, y_tx, pm_raw_tx, rh_tx = load_csv_dataset(tx_csv)
+    X_tx, y_tx, pm_raw_tx, rh_tx = load_csv_dataset(thanh_xuan_csv)
     c_target_tx = np.clip(y_tx.flatten() / np.maximum(pm_raw_tx, 1.0), 0.25, 1.05)[:, None]
     print(f" -> Tập địa phương hóa Quận Thanh Xuân & Hà Nội: {len(X_tx):,} mẫu.")
 

@@ -25,8 +25,8 @@ def quantize_matrix(weight_tensor):
     w = weight_tensor.cpu().numpy()
     max_val = np.max(np.abs(w))
     scale = float(max_val / 127.0) if max_val > 0 else 1.0
-    w_int8 = np.clip(np.round(w / scale), -128, 127).astype(np.int8)
-    return w_int8, scale
+    quantized_weights = np.clip(np.round(w / scale), -128, 127).astype(np.int8)
+    return quantized_weights, scale
 
 def format_1d_array(arr, indent="    ", per_line=10, fmt="%.6ff"):
     lines = []

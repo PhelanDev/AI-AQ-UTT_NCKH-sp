@@ -120,9 +120,9 @@ void st7789_draw_string(uint16_t x, uint16_t y, const char *str, uint16_t color,
  *  - Data Grid: PM2.5 (Calib & Raw), SHT40 (Temp & RH), SenseAir S8 (CO2)
  *  - Bottom Status bar: System health ("HEALTHY" / "WARMUP" / "DRIFT")
  *
- * @param payload Pointer to display payload data.
+ * @param display_data Pointer to display display_data data.
  */
-void st7789_render_dashboard(const EdgeDisplayPayload *payload);
+void st7789_render_dashboard(const EdgeDisplayPayload *display_data);
 
 /**
  * @brief Puts display into ultra-low-power sleep mode (Turn off backlight, SLPIN 0x10).

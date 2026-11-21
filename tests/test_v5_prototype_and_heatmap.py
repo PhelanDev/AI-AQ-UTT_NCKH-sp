@@ -25,13 +25,13 @@ from pi.central_engine import CentralAIEngine
 def test_v5_01_single_station_heatmap_and_opacity_decay():
     """Khi chỉ có 1 trạm thật (N=1), chỉ có đúng 1 marker, tâm trạm opacity=1.0 và mờ dần khi ra xa."""
     single_val = np.array([85.0], dtype=np.float32)
-    single_coord_utm = STATION_COORDS_UTM[:1]
+    station_coord_utm = STATION_COORDS_UTM[:1]
     single_coord_wgs = STATION_COORDS_WGS84[:1]
     single_id = STATION_IDS[:1]
 
     hm = generate_web_heatmap(
         station_values=single_val,
-        coordinates_utm=single_coord_utm,
+        coordinates_utm=station_coord_utm,
         coordinates_wgs84=single_coord_wgs,
         station_ids=single_id,
         wind_vector=np.array([0.0, 0.0]),

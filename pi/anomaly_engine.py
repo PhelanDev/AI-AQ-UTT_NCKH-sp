@@ -159,8 +159,8 @@ class PhysicalSignatureClassifier:
             rem = (1.0 - p1) / 3.0
             return 1, "Fire/Combustion", [rem, p1, rem, rem]
 
-        duration_days = duration_minutes / (60.0 * 24.0)
-        if stations_affected == 1 and has_pm and (not has_gas) and duration_days >= 1.0:
+        sampling_days = duration_minutes / (60.0 * 24.0)
+        if stations_affected == 1 and has_pm and (not has_gas) and sampling_days >= 1.0:
             p2 = 0.85
             rem = (1.0 - p2) / 3.0
             return 2, "Sensor Drift", [rem, rem, p2, rem]

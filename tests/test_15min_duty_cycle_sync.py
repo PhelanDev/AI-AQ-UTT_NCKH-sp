@@ -52,9 +52,9 @@ class Test15MinDutyCycleConstants:
         )
 
         active_time = ESP_WARMUP_SECONDS + ESP_ACTIVE_PROCESS_SECONDS
-        active_ratio = active_time / TELEMETRY_INTERVAL_S
+        active_time_ratio = active_time / TELEMETRY_INTERVAL_S
         # 32s / 900s = 3.55% active, 96.44% sleep trên node ESP32-S3
-        assert active_ratio < 0.04, f"Active ratio {active_ratio:.4f} phai < 4% de keo dai pin trạm"
+        assert active_time_ratio < 0.04, f"Active ratio {active_time_ratio:.4f} phai < 4% de keo dai pin trạm"
 
 
 class TestOrdinaryKrigingHeatmap:

@@ -227,7 +227,7 @@ int main() {
     const float pm_levels[] = {35.0f, 75.0f, 150.0f, 300.0f};
     const int num_pm_levels = sizeof(pm_levels) / sizeof(pm_levels[0]);
 
-    float overall_max_delta = 0.0f;
+    float max_observed_delta = 0.0f;
 
     for (int p = 0; p < num_pm_levels; p++) {
         float pm_test = pm_levels[p];
@@ -253,8 +253,8 @@ int main() {
             step_count++;
         }
 
-        if (max_step_delta > overall_max_delta) {
-            overall_max_delta = max_step_delta;
+        if (max_step_delta > max_observed_delta) {
+            max_observed_delta = max_step_delta;
         }
 
         printf(" -> PM = %5.1f ug/m3: %d steps, Max consecutive delta = %.4f ug/m3 (at RH = %.2f%%)\n",
@@ -286,7 +286,7 @@ int main() {
     printf(" -> Dynamic stack usage:        %zu bytes (< 1024 bytes limit)\n", stack_predict);
     printf(" -> Heap allocations:           %zu bytes (0B required)\n", g_heap_bytes);
     printf(" -> 100,000 Cycles Mean Latency: %.2f us (< 50 us limit)\n", us_per_call);
-    printf(" -> Max Step Delta (RH sweep):  %.4f ug/m3 (< 0.20 ug/m3 limit)\n", overall_max_delta);
+    printf(" -> Max Step Delta (RH sweep):  %.4f ug/m3 (< 0.20 ug/m3 limit)\n", max_observed_delta);
     printf(" -> Total Failures:             %d\n", failures);
     printf("================================================================================\n");
 

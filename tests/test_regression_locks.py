@@ -74,8 +74,8 @@ def test_unified_central_ai_onnx_parity_lock():
     sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
     onnx_fc, onnx_rc = sess.run(None, {"input_timeseries": dummy_in})
 
-    max_diff_fc = float(np.max(np.abs(py_fc_np - onnx_fc)))
+    max_forecast_diff = float(np.max(np.abs(py_fc_np - onnx_fc)))
     max_diff_rc = float(np.max(np.abs(py_rc_np - onnx_rc)))
 
-    assert max_diff_fc < 1e-4, f"Độ lệch dự báo PyTorch vs ONNX quá lớn: {max_diff_fc}"
+    assert max_forecast_diff < 1e-4, f"Độ lệch dự báo PyTorch vs ONNX quá lớn: {max_forecast_diff}"
     assert max_diff_rc < 1e-4, f"Độ lệch tái tạo PyTorch vs ONNX quá lớn: {max_diff_rc}"

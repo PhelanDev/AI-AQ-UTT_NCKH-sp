@@ -16,8 +16,8 @@ def test_shallow_autoencoder_architecture():
 
 def test_adaptive_anomaly_detector_mse():
     detector = AdaptiveAnomalyDetector(beta_ema=0.98, n_sigma=3.0)
-    baseline_errs = np.random.normal(0.0, 0.5, size=(100, 48))
-    detector.fit_baseline(baseline_errs)
+    baseline_errors = np.random.normal(0.0, 0.5, size=(100, 48))
+    detector.fit_baseline(baseline_errors)
     assert detector.initialized
 
     # Lỗi nhỏ -> Không bất thường

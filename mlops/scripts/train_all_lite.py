@@ -45,7 +45,7 @@ def main():
     t0 = time.perf_counter()
     from mlops.scripts.train_and_quantize_standard_mlp_lite import main as train_m1
     train_m1()
-    dt_m1 = time.perf_counter() - t0
+    edge_training_seconds = time.perf_counter() - t0
 
     with open("mlops/models/standard_mlp_lite_params.json", "r", encoding="utf-8") as f:
         meta_m1 = json.load(f)
@@ -62,7 +62,7 @@ def main():
         "test_r2": meta_m1["test_r2"],
         "test_mae_ugm3": meta_m1["test_mae_ugm3"],
         "test_rmse_ugm3": meta_m1.get("test_rmse_ugm3", 0.0),
-        "training_time_s": round(dt_m1, 2)
+        "training_time_s": round(edge_training_seconds, 2)
     }
 
     # =========================================================================

@@ -246,10 +246,10 @@ class TestNumericalStabilityAdversarial(unittest.TestCase):
 
     def test_edge_ai_deliquescence_boundary_multi_seed(self):
         """Verify Smooth Deliquescence Gate continuity across sweep RH 58-62% for multiple CO2 and PM levels."""
-        model = MultiSensorResMLP(in_features=8, hidden_dim=96)
+        stress_model = MultiSensorResMLP(in_features=8, hidden_dim=96)
         if os.path.exists("mlops/models/multisensor_resmlp.pt"):
-            model.load_state_dict(torch.load("mlops/models/multisensor_resmlp.pt", map_location="cpu", weights_only=True))
-        model.eval()
+            stress_model.load_state_dict(torch.load("mlops/models/multisensor_resmlp.pt", map_location="cpu", weights_only=True))
+        stress_model.eval()
 
         for seed in SEEDS:
             rng = np.random.default_rng(seed)
@@ -263,7 +263,7 @@ class TestNumericalStabilityAdversarial(unittest.TestCase):
             for rh in rh_sweep:
                 dp = compute_dew_point(temp, rh)
                 c_eff, pm_out = predict_calibrated_pm25(
-                    model, pm_val, pm_val * 0.02, 0.70, temp, rh, dp, co2_val, 110.0
+                    stress_model, pm_val, pm_val * 0.02, 0.70, temp, rh, dp, co2_val, 110.0
                 )
                 pm_calibrated.append(pm_out)
 

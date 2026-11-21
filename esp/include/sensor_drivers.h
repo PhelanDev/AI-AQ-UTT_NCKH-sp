@@ -60,10 +60,10 @@ uint16_t modbus_crc16(const uint8_t *data, size_t len);
  *
  * @param buf Pointer to received Modbus RTU response frame.
  * @param len Length of received frame.
- * @param out_co2_ppm Output pointer for CO2 concentration in ppm.
+ * @param co2_ppm_out Output pointer for CO2 concentration in ppm.
  * @return true if CRC matches and CO2 is parsed; false on error.
  */
-bool senseair_s8_parse_response(const uint8_t *buf, size_t len, float *out_co2_ppm);
+bool senseair_s8_parse_response(const uint8_t *buf, size_t len, float *co2_ppm_out);
 
 /**
  * @brief Builds standard Modbus RTU read command for SenseAir S8 CO2 register 0x0003.

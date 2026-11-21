@@ -83,16 +83,16 @@ float tinyml_infer_c_factor_multisensor(float pm_avg, float diff_pm, float r_pm,
     float raw_in[TINYML_INPUT_DIM] = {
         pm_avg, diff_pm, r_pm, temp_c, rh_percent, dew_point, co2_ppm, gas_proxy
     };
-    float norm_in[TINYML_INPUT_DIM];
+    float normalized_input[TINYML_INPUT_DIM];
 
     // Chuan hoa Min-Max
     for (int i = 0; i < TINYML_INPUT_DIM; i++) {
-        float range = TINYML_X_MAX[i] - TINYML_X_MIN[i];
+        float range = TINYML_X_MAX[i] - TINYML_FEATURE_MIN[i];
         if (range <= 1e-6f) range = 1.0f;
-        float val = (raw_in[i] - TINYML_X_MIN[i]) / range;
+        float val = (raw_in[i] - TINYML_FEATURE_MIN[i]) / range;
         if (val < 0.0f) val = 0.0f;
         if (val > 1.0f) val = 1.0f;
-        norm_in[i] = val;
+        normalized_input[i] = val;
     }
 
     // Tang 1: fc1 (8 -> 32)
@@ -100,7 +100,7 @@ float tinyml_infer_c_factor_multisensor(float pm_avg, float diff_pm, float r_pm,
     for (int i = 0; i < TINYML_HIDDEN1_DIM; i++) {
         float sum = 0.0f;
         for (int j = 0; j < TINYML_INPUT_DIM; j++) {
-            sum += norm_in[j] * ((float)FC1_WEIGHT[i][j]);
+            sum += normalized_input[j] * ((float)FC1_WEIGHT[i][j]);
         }
         h0[i] = relu(sum * FC1_SCALE + FC1_BIAS[i]);
     }
@@ -175,23 +175,23 @@ float tinyml_predict_pm25(float pm1_raw, float pm2_raw,
 float tinyml_predict_pm25_advanced(float pm1_raw, float pm2_raw,
                                    float temp_c, float rh_percent,
                                    float warmup_elapsed_sec,
-                                   TinyML_AnomalyCode *out_anomaly_code) {
+                                   TinyML_AnomalyCode *anomaly_code_out) {
     if (warmup_elapsed_sec < PMS7003_WARMUP_SECONDS) {
-        if (out_anomaly_code) *out_anomaly_code = TINYML_ANOMALY_WARMUP_INCOMPLETE;
+        if (anomaly_code_out) *anomaly_code_out = TINYML_ANOMALY_WARMUP_INCOMPLETE;
         return (pm1_raw + pm2_raw) * 0.5f;
     }
 
     TinyML_AnomalyCode drift_status = tinyml_update_drift_monitor(pm1_raw, pm2_raw, 0);
     if (drift_status == TINYML_ANOMALY_CHAMBER_DRIFT) {
-        if (out_anomaly_code) *out_anomaly_code = TINYML_ANOMALY_CHAMBER_DRIFT;
+        if (anomaly_code_out) *anomaly_code_out = TINYML_ANOMALY_CHAMBER_DRIFT;
         return (pm1_raw < pm2_raw) ? pm1_raw : pm2_raw;
     }
 
     bool is_spike = false;
     float pred = tinyml_predict_pm25(pm1_raw, pm2_raw, temp_c, rh_percent, &is_spike);
 
-    if (out_anomaly_code) {
-        *out_anomaly_code = is_spike ? TINYML_ANOMALY_TRANSIENT_SPIKE : TINYML_ANOMALY_OK;
+    if (anomaly_code_out) {
+        *anomaly_code_out = is_spike ? TINYML_ANOMALY_TRANSIENT_SPIKE : TINYML_ANOMALY_OK;
     }
 
     return pred;

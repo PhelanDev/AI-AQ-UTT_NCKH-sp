@@ -88,8 +88,8 @@ class MultiNoiseEnvironment:
         rh_ratio = rh_pct / 100.0
         p_sat_env = 6.1078 * math.exp((17.27 * temp_c) / (237.3 + temp_c))
         p_sat_cham = 6.1078 * math.exp((17.27 * t_chamber) / (237.3 + t_chamber))
-        actual_vapor_p = rh_ratio * p_sat_env
-        rh_chamber = min(99.5, max(5.0, (actual_vapor_p / p_sat_cham) * 100.0))
+        vapor_pressure_actual = rh_ratio * p_sat_env
+        rh_chamber = min(99.5, max(5.0, (vapor_pressure_actual / p_sat_cham) * 100.0))
 
         # -------------------------------------------------------------
         # NHIỄU 2: MÔ HÌNH PHỒNG ẨM QUANG HỌC THỂ TÍCH & VÒNG TRỄ KÖHLER

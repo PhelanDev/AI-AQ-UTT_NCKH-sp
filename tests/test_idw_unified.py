@@ -4,8 +4,8 @@ from pi.spatial_temporal_engine import SpatialTemporalEngine
 
 def test_idw_unified_heatmap_generation():
     engine = SpatialTemporalEngine()
-    vals = [25.0, 35.0, 45.0, 55.0, 30.0, 40.0, 50.0, 60.0]
-    res = engine.generate_pollution_heatmap(vals, grid_resolution=20)
+    station_values = [25.0, 35.0, 45.0, 55.0, 30.0, 40.0, 50.0, 60.0]
+    res = engine.generate_pollution_heatmap(station_values, grid_resolution=20)
 
     assert res["grid_resolution"] == 20
     assert res["heatmap_pm25"].shape == (20, 20)

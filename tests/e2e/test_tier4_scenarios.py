@@ -34,9 +34,9 @@ class TestTier4Scenario1HanoiSmogEpisode(unittest.TestCase):
     def test_s1_01_nocturnal_inversion_compression(self):
         """Winter nighttime inversion compresses boundary layer to 250m, expanding to 1400m at midday."""
         pblh_night = oracle_diurnal_pblh(3.0)
-        pblh_midday = oracle_diurnal_pblh(13.0)
+        midday_pblh = oracle_diurnal_pblh(13.0)
         self.assertAlmostEqual(pblh_night, 250.0, places=2)
-        self.assertGreater(pblh_midday, 1200.0)
+        self.assertGreater(midday_pblh, 1200.0)
 
     def test_s1_02_morning_rush_hour_trapped_emissions(self):
         """High traffic emissions at 08:00 inside shallow boundary layer yield severe PM surge."""

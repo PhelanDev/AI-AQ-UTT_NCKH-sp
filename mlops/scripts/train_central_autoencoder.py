@@ -91,7 +91,7 @@ def prepare_48d_multistation_dataset(
 
     pm25_raw = np.array([_get_val(t, "pm25", 35.0) for t in sorted_times], dtype=np.float32)
     pm10_raw = np.array([_get_val(t, "pm10", 50.0) for t in sorted_times], dtype=np.float32)
-    temp_raw = np.array([_get_val(t, "temperature_c", 25.0) for t in sorted_times], dtype=np.float32)
+    raw_temperature = np.array([_get_val(t, "temperature_c", 25.0) for t in sorted_times], dtype=np.float32)
     rh_raw   = np.array([_get_val(t, "relative_humidity", 70.0) for t in sorted_times], dtype=np.float32)
     co_raw   = np.array([_get_val(t, "co", 500.0) for t in sorted_times], dtype=np.float32)
     no2_raw  = np.array([_get_val(t, "no2", 20.0) for t in sorted_times], dtype=np.float32)
@@ -155,7 +155,7 @@ def prepare_48d_multistation_dataset(
         uhi = spec["uhi_amp"] * (0.6 * solar_diurnal + 0.4 * night_inversion)
         drh = spec["drh_amp"] * (0.5 * solar_diurnal + 0.5 * night_inversion)
 
-        temp_mat[:, s] = temp_raw + uhi + turb_temp[:, s]
+        temp_mat[:, s] = raw_temperature + uhi + turb_temp[:, s]
         rh_mat[:, s]   = np.maximum(0.0, rh_raw + spec["rh_bias"] + 0.1 * drh + turb_rh[:, s])
 
         co2_mat[:, s] = co2_base * spec["co2_scale"] * (1.0 + 0.3 * (g_morning + g_evening) + 0.25 * local_noise[:, s])

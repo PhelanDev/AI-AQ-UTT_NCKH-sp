@@ -295,7 +295,7 @@ def generate_doc():
     add_h1("1. TỔNG QUAN PHÂN TẦNG VÀ ĐỊNH VỊ 2 MÔ HÌNH AI")
     add_p("Kiến trúc xử lý thông minh của hệ thống được tổ chức thành 2 tầng AI chuyên biệt, phân định ranh giới rõ ràng về nhiệm vụ, vị trí thực thi và dữ liệu xử lý:")
 
-    arch_rows = [
+    architecture_rows = [
         ("Mô hình 1: Hiệu chuẩn & Lọc biên (Edge AI / TinyML)",
          "Vi điều khiển nhúng tại trạm đo (ESP32-S3)",
          "Xử lý làm sạch tín hiệu tại nguồn, bù trừ phi tuyến sai số nồm ẩm và kiểm định chéo độ tin cậy của cảm biến.",
@@ -305,7 +305,7 @@ def generate_doc():
          "Khai phá quy luật thời gian, dự báo xu hướng biến thiên nồng độ ô nhiễm và phát hiện các biến động môi trường bất thường.",
          "Vận hành định kỳ theo chu kỳ lấy mẫu, xử lý đa biến chuỗi thời gian lịch sử nhiều ngày.")
     ]
-    create_table(["Phân tầng AI", "Môi trường thực thi", "Nhiệm vụ cốt lõi", "Cơ chế vận hành"], arch_rows,
+    create_table(["Phân tầng AI", "Môi trường thực thi", "Nhiệm vụ cốt lõi", "Cơ chế vận hành"], architecture_rows,
                  col_widths=[Inches(1.6), Inches(1.5), Inches(2.0), Inches(1.4)])
 
     make_callout("Nguyên lý bảo toàn chất lượng dữ liệu",

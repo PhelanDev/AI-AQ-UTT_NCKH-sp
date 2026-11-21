@@ -41,7 +41,7 @@ def test_unified_model_architecture_and_export():
     onnx_forecast, onnx_recon = sess.run(None, {"input_timeseries": dummy_in})
 
     diff_forecast = float(np.max(np.abs(py_forecast_np - onnx_forecast)))
-    diff_recon = float(np.max(np.abs(py_recon_np - onnx_recon)))
+    reconstruction_diff = float(np.max(np.abs(py_recon_np - onnx_recon)))
 
     assert diff_forecast < 1e-4, f"Forecast Parity diff qua lon: {diff_forecast}"
-    assert diff_recon < 1e-4, f"Recon Parity diff qua lon: {diff_recon}"
+    assert reconstruction_diff < 1e-4, f"Recon Parity diff qua lon: {reconstruction_diff}"

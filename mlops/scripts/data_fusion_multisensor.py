@@ -228,8 +228,8 @@ def process_epa_collocation_real(arg1, arg2=None):
     n = len(rows)
 
     # 2. Phân chia Chronological Split 75% train / 25% test với khoảng đệm cách ly 48h
-    split_idx = int(0.75 * n)
-    train_cutoff_dt = rows[split_idx][0]
+    split_position = int(0.75 * n)
+    train_cutoff_dt = rows[split_position][0]
     buffer_end_dt = train_cutoff_dt + timedelta(hours=48)
 
     train_rows = [r for r in rows if r[0] <= train_cutoff_dt]

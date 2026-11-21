@@ -386,7 +386,7 @@ def create_report():
     p_abs2.runs[0].font.italic = True
 
     add_h2("DANH MỤC TỪ VIẾT TẮT")
-    abbr_data = [
+    abbreviation_rows = [
         ("AI", "Artificial Intelligence — Trí tuệ nhân tạo"),
         ("TinyML", "Tiny Machine Learning — Học máy thu nhỏ cho hệ thống nhúng"),
         ("Edge AI", "Edge Artificial Intelligence — Trí tuệ nhân tạo tại biên"),
@@ -403,7 +403,7 @@ def create_report():
         ("US EPA", "United States Environmental Protection Agency — Cơ quan Bảo vệ Môi trường Hoa Kỳ"),
         ("BAM-1020", "Beta Attenuation Monitor — Thiết bị đo nồng độ bụi chuẩn hấp thụ tia beta")
     ]
-    create_table(["Chữ viết tắt", "Giải thích thuật ngữ và ý nghĩa kỹ thuật"], abbr_data, col_widths=[Inches(1.8), Inches(4.5)])
+    create_table(["Chữ viết tắt", "Giải thích thuật ngữ và ý nghĩa kỹ thuật"], abbreviation_rows, col_widths=[Inches(1.8), Inches(4.5)])
 
     doc.add_page_break()
 

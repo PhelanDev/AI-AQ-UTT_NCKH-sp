@@ -28,7 +28,7 @@ class TestM3Phase4EmpiricalAdversarial:
         """
         test_seeds = [42, 100, 2026, 9999, 0, 777, 12345, 88888, 314159, 2024]
         ratios_train = []
-        eff_ranks = []
+        effective_ranks = []
 
         print("\n--- SVD Variance Ratio Stress on X_train Across 10 Diverse Seeds ---")
         for seed in test_seeds:
@@ -45,7 +45,7 @@ class TestM3Phase4EmpiricalAdversarial:
             p_tr = var_train / np.sum(var_train)
             entropy_tr = -np.sum(p_tr * np.log(p_tr + 1e-12))
             eff_rank_tr = float(np.exp(entropy_tr))
-            eff_ranks.append(eff_rank_tr)
+            effective_ranks.append(eff_rank_tr)
 
             print(
                 f"Seed {seed:6d} -> X_train Top-6: {top6_ratio_tr*100:.2f}% | "

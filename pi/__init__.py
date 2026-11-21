@@ -72,7 +72,7 @@ from pi.benchmark_pi5 import (
     benchmark_onnx_model,
 )
 
-__all__ = [
+_public_symbols = [
 
     "STATIONS",
     "STATION_NAMES",
@@ -132,3 +132,5 @@ __all__ = [
     "run_full_pi5_benchmark",
     "benchmark_onnx_model",
 ]
+
+__all__ = _public_symbols

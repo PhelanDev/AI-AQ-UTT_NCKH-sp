@@ -98,9 +98,9 @@ def test_phase3_forecaster_revin_dlinear_r2_and_no_surge_collapse():
     # 3. Kiểm tra chống sập đỉnh (Surge Collapse) khi PM2.5 tăng vọt 20 -> 180 ug/m3
     from pi.central_engine import CentralAIEngine
     engine = CentralAIEngine()
-    hist_surge = np.linspace(20.0, 180.0, 24, dtype=np.float32)[:, None].repeat(8, axis=1)
+    surge_history = np.linspace(20.0, 180.0, 24, dtype=np.float32)[:, None].repeat(8, axis=1)
     curr_48 = np.tile(np.array([180.0, 235.0, 25.0, 75.0, 2.0, 120.0], dtype=np.float32), 8)
-    res = engine.process_telemetry_frame(hist_surge, curr_48)
+    res = engine.process_telemetry_frame(surge_history, curr_48)
     pred_1h = res["forecast"]["pm25_pred"][0]
     assert 145.0 <= pred_1h <= 220.0, f"Surge collapse hallucination at +1h: {pred_1h} ug/m3"
     assert "pm25_p10" in res["forecast_24h"] and "pm25_p90" in res["forecast_24h"]

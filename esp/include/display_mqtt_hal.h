@@ -91,9 +91,9 @@ const char *tinyml_get_aqi_category(int aqi);
  *
  * @param payload Pointer to display payload data.
  * @param out_buf Output character buffer.
- * @param buf_size Maximum capacity of output buffer.
+ * @param buf_capacity Maximum capacity of output buffer.
  */
-void lcd_format_screen_buffer(const EdgeDisplayPayload *payload, char *out_buf, size_t buf_size);
+void lcd_format_screen_buffer(const EdgeDisplayPayload *payload, char *out_buf, size_t buf_capacity);
 
 // ============================================================================
 // MQTT Telemetry JSON Formatter

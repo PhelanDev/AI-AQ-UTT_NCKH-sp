@@ -243,13 +243,13 @@ void setup(void) {
     SensorBurstAccumulator burst_acc;
     burst_accumulator_init(&burst_acc);
 
-    bool all_valid = true;
+    bool all_samples_valid = true;
     for (int i = 0; i < SENSOR_BURST_SAMPLE_COUNT; i++) {
         RawSensorSample sample;
         if (hardware_read_sensor_sample(i, &sample)) {
             burst_accumulator_push(&burst_acc, &sample);
         } else {
-            all_valid = false;
+            all_samples_valid = false;
         }
     }
 
@@ -257,7 +257,7 @@ void setup(void) {
     const bool mqtt_online = true;      // 4G/WiFi connected
 
     EdgeCycleResult result = edge_execute_15min_duty_cycle_burst(&burst_acc, warmup_elapsed, mqtt_online);
-    if (!all_valid) {
+    if (!all_samples_valid) {
         result.anomaly_code = TINYML_ANOMALY_SENSOR_FAULT;
     }
 

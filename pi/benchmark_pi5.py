@@ -67,7 +67,7 @@ def benchmark_onnx_model(
         latencies_ms.append((t1 - t0) * 1000.0)
 
     latencies_arr = np.array(latencies_ms)
-    mean_lat = float(np.mean(latencies_arr))
+    mean_latency_ms = float(np.mean(latencies_arr))
     min_lat = float(np.min(latencies_arr))
     max_lat = float(np.max(latencies_arr))
     p95_lat = float(np.percentile(latencies_arr, 95))
@@ -78,7 +78,7 @@ def benchmark_onnx_model(
         rss_mb = float(process.memory_info().rss / (1024.0 * 1024.0))
 
     return {
-        "mean_ms": mean_lat,
+        "mean_ms": mean_latency_ms,
         "min_ms": min_lat,
         "max_ms": max_lat,
         "p95_ms": p95_lat,

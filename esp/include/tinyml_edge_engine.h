@@ -59,7 +59,7 @@ float tinyml_predict_pm25(float pm1_raw, float pm2_raw,
 float tinyml_predict_pm25_advanced(float pm1_raw, float pm2_raw,
                                    float temp_c, float rh_percent,
                                    float warmup_elapsed_sec,
-                                   TinyML_AnomalyCode *out_anomaly_code);
+                                   TinyML_AnomalyCode *anomaly_code_out);
 
 #ifdef __cplusplus
 }

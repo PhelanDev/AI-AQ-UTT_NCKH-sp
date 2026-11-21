@@ -64,8 +64,8 @@ class TestTier2WindAndDispersionBoundaries(unittest.TestCase):
     def test_b2_01_calm_wind_zero_velocity(self):
         """Near-zero wind velocity (calm conditions) regularizes without division by zero."""
         coords = np.array([[100.0, 200.0], [300.0, 400.0]])
-        tau_calm = np.array([0.0, 0.0])
-        v_est, speed, bearing = oracle_slowness_wls(coords, tau_calm)
+        calm_lag_seconds = np.array([0.0, 0.0])
+        v_est, speed, bearing = oracle_slowness_wls(coords, calm_lag_seconds)
         self.assertEqual(speed, 0.0)
         self.assertEqual(v_est[0], 0.0)
         self.assertEqual(v_est[1], 0.0)

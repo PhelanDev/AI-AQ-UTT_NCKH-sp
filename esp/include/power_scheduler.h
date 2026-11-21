@@ -68,12 +68,12 @@ bool burst_accumulator_push(SensorBurstAccumulator *acc, const RawSensorSample *
  *
  * @param acc Pointer to accumulator containing samples.
  * @param trim_count Number of minimum and maximum outliers to discard per channel.
- * @param out_filtered_sample Output pointer receiving clean representative sample.
+ * @param filtered_sample_out Output pointer receiving clean representative sample.
  * @return true if filtering succeeded; false if insufficient samples (count <= 2*trim_count).
  */
 bool burst_filter_trimmed_mean(const SensorBurstAccumulator *acc,
                                uint8_t trim_count,
-                               RawSensorSample *out_filtered_sample);
+                               RawSensorSample *filtered_sample_out);
 
 // Complete result output of 15-minute duty cycle execution
 typedef struct {

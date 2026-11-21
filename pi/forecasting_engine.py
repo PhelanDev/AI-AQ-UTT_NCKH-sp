@@ -97,9 +97,9 @@ class AsymmetricHuberLoss(nn.Module):
 
         peak_mask = (y_true > 50.0).float()
         under_pred = F.relu(y_true - y_pred)
-        peak_penalty = self.lambda_peak * peak_mask * (under_pred ** 1.5)
+        peak_error_penalty = self.lambda_peak * peak_mask * (under_pred ** 1.5)
 
-        total_loss = torch.mean(huber + peak_penalty)
+        total_loss = torch.mean(huber + peak_error_penalty)
 
         if y_pred.shape[1] > 1 and self.lambda_trend > 0:
             diff_pred = y_pred[:, 1:, 0] - y_pred[:, :-1, 0]

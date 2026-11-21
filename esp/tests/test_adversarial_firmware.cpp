@@ -50,8 +50,8 @@ int main() {
                pred1, isnan(pred1), isinf(pred1));
 
         // Extreme Fog (RH=95%, CO2=420, Gas=0): Check C factor
-        float c_fog = tinyml_infer_c_factor_multisensor(120.0f, 1.5f, 0.72f, 19.0f, 95.0f, 18.2f, 420.0f, 0.0f);
-        printf(" -> [Extreme 2 - Fog] RH=95%%, CO2=420, Gas=0: C_factor=%.4f (Target: <= 0.65)\n", c_fog);
+        float fog_factor = tinyml_infer_c_factor_multisensor(120.0f, 1.5f, 0.72f, 19.0f, 95.0f, 18.2f, 420.0f, 0.0f);
+        printf(" -> [Extreme 2 - Fog] RH=95%%, CO2=420, Gas=0: C_factor=%.4f (Target: <= 0.65)\n", fog_factor);
 
         // Extreme Smoke/Fire (RH=95%, CO2=2000, Gas=800): Check C factor
         float c_smoke = tinyml_infer_c_factor_multisensor(120.0f, 3.0f, 0.75f, 20.0f, 95.0f, 19.1f, 2000.0f, 800.0f);
@@ -66,8 +66,8 @@ int main() {
             printf("FAIL: Out-of-range inputs produced NaN/Inf!\n");
             return 1;
         }
-        if (c_fog > 0.65f) {
-            printf("FAIL: C_fog = %.4f > 0.65f!\n", c_fog);
+        if (fog_factor > 0.65f) {
+            printf("FAIL: C_fog = %.4f > 0.65f!\n", fog_factor);
             return 1;
         }
         if (c_smoke < 0.85f) {

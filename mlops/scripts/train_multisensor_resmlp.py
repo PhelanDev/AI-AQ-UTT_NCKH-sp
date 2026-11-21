@@ -92,7 +92,7 @@ def generate_dry_air_boundary_anchors(n_samples: int = 4000, seed: int = 100):
     
     # 1. Bão cát sa mạc cực đoan
     n_sand = n_samples // 3
-    pm_sand = rng.uniform(150.0, 450.0, size=n_sand).astype(np.float32)
+    sand_pm_reading = rng.uniform(150.0, 450.0, size=n_sand).astype(np.float32)
     diff_sand = rng.uniform(0.0, 5.0, size=n_sand).astype(np.float32)
     r_sand = rng.uniform(0.60, 0.85, size=n_sand).astype(np.float32)
     temp_sand = rng.uniform(22.0, 42.0, size=n_sand).astype(np.float32)
@@ -126,7 +126,7 @@ def generate_dry_air_boundary_anchors(n_samples: int = 4000, seed: int = 100):
     gas_ac = rng.uniform(50.0, 250.0, size=n_ac).astype(np.float32)
     c_target_ac = np.ones(n_ac, dtype=np.float32)
 
-    pm_all = np.concatenate([pm_sand, pm_dry, pm_ac])
+    pm_all = np.concatenate([sand_pm_reading, pm_dry, pm_ac])
     diff_all = np.concatenate([diff_sand, diff_dry, diff_ac])
     r_all = np.concatenate([r_sand, r_dry, r_ac])
     temp_all = np.concatenate([temp_sand, temp_dry, temp_ac])

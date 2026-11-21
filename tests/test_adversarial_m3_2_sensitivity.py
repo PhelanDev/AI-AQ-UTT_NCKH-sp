@@ -114,10 +114,10 @@ class TestAdversarialColdStartWindowM3_2:
         3. Localized fault produces is_anomaly == True with ratio > 2.5x.
         """
         hist_clean_full, curr_clean = _create_clean_synthetic_data(seed=777)
-        hist_cold = hist_clean_full[:T, :]  # Shape (T, 8)
+        cold_history = hist_clean_full[:T, :]  # Shape (T, 8)
 
         engine_clean = CentralAIEngine()
-        res_clean = engine_clean.process_telemetry_frame(hist_cold, curr_clean.ravel())
+        res_clean = engine_clean.process_telemetry_frame(cold_history, curr_clean.ravel())
         assert res_clean["anomaly"]["is_anomaly"] is False, f"Cold-start T={T} false alarm on clean data"
         score_clean = res_clean["anomaly"]["anomaly_score"]
 
@@ -127,7 +127,7 @@ class TestAdversarialColdStartWindowM3_2:
         curr_fault[2, 0] = 240.0
         curr_fault[2, 1] = 290.0
 
-        res_fault = engine_fault.process_telemetry_frame(hist_cold, curr_fault.ravel())
+        res_fault = engine_fault.process_telemetry_frame(cold_history, curr_fault.ravel())
         assert res_fault["anomaly"]["is_anomaly"] is True, f"Cold-start T={T} failed to detect station 3 fault"
         score_fault = res_fault["anomaly"]["anomaly_score"]
         ratio = score_fault / max(score_clean, 1e-9)

@@ -12,8 +12,8 @@
                 const VALID_THEMES = ['system', 'light', 'dark'];
                 const raw = localStorage.getItem('aq_theme_mode');
                 const saved = VALID_THEMES.includes(raw) ? raw : 'system';
-                const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                const resolved = (saved === 'system') ? (systemDark ? 'dark' : 'light') : saved;
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const resolved = (saved === 'system') ? (prefersDark ? 'dark' : 'light') : saved;
                 document.documentElement.setAttribute('data-theme', resolved);
             } catch(e) {}
         })();

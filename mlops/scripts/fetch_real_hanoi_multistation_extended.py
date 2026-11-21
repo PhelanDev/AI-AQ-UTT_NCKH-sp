@@ -61,8 +61,8 @@ def fetch_station_archive(station: Dict, start_date: str, end_date: str) -> List
         aq_json = json.loads(resp.read().decode("utf-8"))
 
     # Fetch Weather
-    req_w = urllib.request.Request(weather_url, headers=headers)
-    with urllib.request.urlopen(req_w, timeout=20) as resp:
+    weather_request = urllib.request.Request(weather_url, headers=headers)
+    with urllib.request.urlopen(weather_request, timeout=20) as resp:
         w_json = json.loads(resp.read().decode("utf-8"))
 
     aq_h = aq_json.get("hourly", {})

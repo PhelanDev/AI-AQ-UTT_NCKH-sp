@@ -169,9 +169,9 @@ class TestAtmosphericPhysics:
         assert q_morn > q_noon
         assert q_eve > q_noon
 
-        q_weekday_morn = traffic.get_emission_rate(time_s=8.0 * 3600.0)
+        weekday_morning_emissions = traffic.get_emission_rate(time_s=8.0 * 3600.0)
         q_weekend_morn = traffic.get_emission_rate(time_s=5 * 86400.0 + 8.0 * 3600.0)
-        assert math.isclose(q_weekend_morn, q_weekday_morn * 0.65, rel_tol=1e-3)
+        assert math.isclose(q_weekend_morn, weekday_morning_emissions * 0.65, rel_tol=1e-3)
 
     def test_hygroscopic_swelling_model(self):
         """Verify Hänel optical swelling of particle diameter under RH > 75%."""

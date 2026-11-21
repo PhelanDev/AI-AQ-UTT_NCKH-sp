@@ -7,7 +7,8 @@ Wrapper gọi export_multisensor_int8 từ quantize_multisensor_int8.py.
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+project_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, project_directory)
 from mlops.scripts.quantize_multisensor_int8 import export_multisensor_int8
 
 if __name__ == "__main__":

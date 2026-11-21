@@ -257,55 +257,55 @@ static float compute_trimmed_mean(const float *raw_vals, size_t n, uint8_t trim_
     }
     sort_floats_insertion(sorted, count);
 
-    size_t core_start = trim_count;
+    size_t first_core_index = trim_count;
     size_t core_end = count - trim_count;
     float sum = 0.0f;
-    for (size_t i = core_start; i < core_end; i++) {
+    for (size_t i = first_core_index; i < core_end; i++) {
         sum += sorted[i];
     }
-    return sum / (float)(core_end - core_start);
+    return sum / (float)(core_end - first_core_index);
 }
 
 bool burst_filter_trimmed_mean(const SensorBurstAccumulator *acc,
                                uint8_t trim_count,
-                               RawSensorSample *out_filtered_sample) {
-    if (!acc || !out_filtered_sample || acc->count == 0) {
+                               RawSensorSample *filtered_sample_out) {
+    if (!acc || !filtered_sample_out || acc->count == 0) {
         return false;
     }
 
     size_t n = acc->count;
     float channel_buf[SENSOR_BURST_SAMPLE_COUNT];
 
-    memset(out_filtered_sample, 0, sizeof(*out_filtered_sample));
-    out_filtered_sample->timestamp = acc->samples[n / 2].timestamp;
+    memset(filtered_sample_out, 0, sizeof(*filtered_sample_out));
+    filtered_sample_out->timestamp = acc->samples[n / 2].timestamp;
 
     // 1. pm1_raw
     for (size_t i = 0; i < n; i++) channel_buf[i] = acc->samples[i].pm1_raw;
-    out_filtered_sample->pm1_raw = compute_trimmed_mean(channel_buf, n, trim_count);
+    filtered_sample_out->pm1_raw = compute_trimmed_mean(channel_buf, n, trim_count);
 
     // 2. pm2_raw
     for (size_t i = 0; i < n; i++) channel_buf[i] = acc->samples[i].pm2_raw;
-    out_filtered_sample->pm2_raw = compute_trimmed_mean(channel_buf, n, trim_count);
+    filtered_sample_out->pm2_raw = compute_trimmed_mean(channel_buf, n, trim_count);
 
     // 3. pm10_raw
     for (size_t i = 0; i < n; i++) channel_buf[i] = acc->samples[i].pm10_raw;
-    out_filtered_sample->pm10_raw = compute_trimmed_mean(channel_buf, n, trim_count);
+    filtered_sample_out->pm10_raw = compute_trimmed_mean(channel_buf, n, trim_count);
 
     // 4. temp_c
     for (size_t i = 0; i < n; i++) channel_buf[i] = acc->samples[i].temp_c;
-    out_filtered_sample->temp_c = compute_trimmed_mean(channel_buf, n, trim_count);
+    filtered_sample_out->temp_c = compute_trimmed_mean(channel_buf, n, trim_count);
 
     // 5. rh_percent
     for (size_t i = 0; i < n; i++) channel_buf[i] = acc->samples[i].rh_percent;
-    out_filtered_sample->rh_percent = compute_trimmed_mean(channel_buf, n, trim_count);
+    filtered_sample_out->rh_percent = compute_trimmed_mean(channel_buf, n, trim_count);
 
     // 6. co2_ppm
     for (size_t i = 0; i < n; i++) channel_buf[i] = acc->samples[i].co2_ppm;
-    out_filtered_sample->co2_ppm = compute_trimmed_mean(channel_buf, n, trim_count);
+    filtered_sample_out->co2_ppm = compute_trimmed_mean(channel_buf, n, trim_count);
 
     // 7. gas_proxy
     for (size_t i = 0; i < n; i++) channel_buf[i] = acc->samples[i].gas_proxy;
-    out_filtered_sample->gas_proxy = compute_trimmed_mean(channel_buf, n, trim_count);
+    filtered_sample_out->gas_proxy = compute_trimmed_mean(channel_buf, n, trim_count);
 
     return true;
 }

@@ -104,10 +104,10 @@ int main() {
         // 3a. Dry Dust Storm: RH=20%, PM=250
         bool anom = false;
         float pm_dust = tinyml_predict_pm25_multisensor(250.0f, 250.0f, 357.14f, 30.0f, 20.0f, 420.0f, 100.0f, &anom);
-        float c_eff_dust = pm_dust / 250.0f;
+        float dust_effective_factor = pm_dust / 250.0f;
         printf(" -> Dry Dust Storm (RH=20%%, PM=250): Out=%.2f ug/m3, c_eff=%.4f (Target: [0.95, 1.05])\n",
-               pm_dust, c_eff_dust);
-        if (c_eff_dust < 0.95f || c_eff_dust > 1.05f) {
+               pm_dust, dust_effective_factor);
+        if (dust_effective_factor < 0.95f || dust_effective_factor > 1.05f) {
             printf("    FAIL: Dry dust storm c_eff out of bounds!\n");
             failures++;
         }

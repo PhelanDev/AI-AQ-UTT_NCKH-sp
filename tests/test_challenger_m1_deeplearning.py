@@ -134,9 +134,9 @@ class TestSmokeAndGateDiscrimination:
         - Smoke: RH=95%, CO2=2000, Gas=800 -> dry particulates -> c_factor >= 0.85
         """
         # Fog condition
-        dp_fog = compute_dew_point(19.0, 95.0)
+        fog_dew_point = compute_dew_point(19.0, 95.0)
         c_fog, pm_fog = predict_calibrated_pm25(
-            loaded_model, 120.0, 1.5, 0.72, 19.0, 95.0, dp_fog, 420.0, 0.0
+            loaded_model, 120.0, 1.5, 0.72, 19.0, 95.0, fog_dew_point, 420.0, 0.0
         )
         print(f"\n[Discrimination] Fog: c_factor={c_fog:.4f}, PM_calib={pm_fog:.2f} (Target c <= 0.65)")
 

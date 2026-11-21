@@ -553,7 +553,7 @@ static void test_100_cycles_simulation_and_duty_timing(void) {
     offline_ringbuf_clear();
 
     const uint32_t NUM_CYCLES = 100;
-    uint64_t accumulated_simulated_seconds = 0;
+    uint64_t simulated_elapsed_seconds = 0;
 
     for (uint32_t c = 1; c <= NUM_CYCLES; ++c) {
         RawSensorSample sample;
@@ -596,14 +596,14 @@ static void test_100_cycles_simulation_and_duty_timing(void) {
         // Validate exact timing breakdown: 30s + 2s + 868s = 900s
         uint32_t cycle_seconds = ESP_WARMUP_SEC + ESP_ACTIVE_PROCESS_SEC + res.deep_sleep_duration_sec;
         assert(cycle_seconds == ESP_CYCLE_TOTAL_SEC);
-        accumulated_simulated_seconds += cycle_seconds;
+        simulated_elapsed_seconds += cycle_seconds;
 
         assert(tinyml_get_boot_cycle_count() == c);
     }
 
     // 100 cycles of 900s = 90,000s = 25.0 hours
-    assert(accumulated_simulated_seconds == 100ULL * 900ULL);
-    assert(accumulated_simulated_seconds == 90000ULL);
+    assert(simulated_elapsed_seconds == 100ULL * 900ULL);
+    assert(simulated_elapsed_seconds == 90000ULL);
     assert(tinyml_get_boot_cycle_count() == 100);
 
     // Drift monitor across 100 cycles with small symmetric noise must remain near 0

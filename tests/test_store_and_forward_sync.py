@@ -62,9 +62,9 @@ class TestStoreAndForwardIntegration:
     def test_server_cycle_with_backfilled_telemetry(self, app_state):
         """Khi nhận gói tin backfill, hệ thống cập nhật chuỗi thời gian bình thường."""
         # Mô phỏng nhận 5 gói tin gửi bù (15 phút/gói = 75 phút mất mạng)
-        base_pm25 = 35.0
+        starting_pm25 = 35.0
         for i in range(5):
-            pm = base_pm25 + i * 2.0
+            pm = starting_pm25 + i * 2.0
             app_state.current_6d[0] = pm
             res = app_state.execute_cycle(reason="store_and_forward_backfill")
             assert res["status"] == "COMPLETED"

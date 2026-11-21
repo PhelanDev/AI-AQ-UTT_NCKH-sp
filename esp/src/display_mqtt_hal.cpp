@@ -61,13 +61,13 @@ const char *tinyml_get_aqi_category(int aqi) {
 // LCD SPI Screen Buffer Formatter
 // ============================================================================
 
-void lcd_format_screen_buffer(const EdgeDisplayPayload *payload, char *out_buf, size_t buf_size) {
-    if (!out_buf || buf_size == 0) {
+void lcd_format_screen_buffer(const EdgeDisplayPayload *payload, char *out_buf, size_t buf_capacity) {
+    if (!out_buf || buf_capacity == 0) {
         return;
     }
 
     if (!payload) {
-        snprintf(out_buf, buf_size, "[LCD] NO PAYLOAD");
+        snprintf(out_buf, buf_capacity, "[LCD] NO PAYLOAD");
         return;
     }
 
@@ -75,7 +75,7 @@ void lcd_format_screen_buffer(const EdgeDisplayPayload *payload, char *out_buf, 
     const char *st = (payload->status_msg && payload->status_msg[0] != '\0')
                      ? payload->status_msg : "NORMAL";
 
-    snprintf(out_buf, buf_size,
+    snprintf(out_buf, buf_capacity,
         "=== AIR QUALITY NODE ===\n"
         "Cycle: #%u | Status: %s\n"
         "PM2.5 Calib: %.1f ug/m3 (Raw: %.1f)\n"
@@ -106,7 +106,7 @@ int mqtt_format_telemetry_json(const EdgeTelemetryPacket *pkt, char *out_json, s
 
     bool is_backfill = (pkt->flags & TELEMETRY_FLAG_BACKFILL) != 0;
 
-    int written = snprintf(out_json, max_len,
+    int json_chars_written = snprintf(out_json, max_len,
         "{\"station_id\":\"esp32s3_node_01\","
         "\"timestamp\":%u,"
         "\"pm1_raw\":%.2f,"
@@ -132,11 +132,11 @@ int mqtt_format_telemetry_json(const EdgeTelemetryPacket *pkt, char *out_json, s
         is_backfill ? "true" : "false"
     );
 
-    if (written < 0 || (size_t)written >= max_len) {
+    if (json_chars_written < 0 || (size_t)json_chars_written >= max_len) {
         return -1;
     }
 
-    return written;
+    return json_chars_written;
 }
 
 // ============================================================================

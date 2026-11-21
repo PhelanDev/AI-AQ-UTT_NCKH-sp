@@ -22,8 +22,8 @@ from pi.forecasting_engine import DilatedTCNBiGRUForecaster
 
 def calc_dew_point(t: float, rh: float) -> float:
     a, b = 17.27, 237.7
-    rh_c = max(1.0, min(100.0, rh))
-    alpha = ((a * t) / (b + t)) + math.log(rh_c / 100.0)
+    clipped_humidity = max(1.0, min(100.0, rh))
+    alpha = ((a * t) / (b + t)) + math.log(clipped_humidity / 100.0)
     return (b * alpha) / (a - alpha)
 
 def calc_vn_aqi_pm25(pm25: float) -> float:

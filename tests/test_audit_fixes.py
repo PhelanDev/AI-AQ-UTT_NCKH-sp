@@ -9,7 +9,7 @@ from pi.web_server import AQServerState, get_server_state
 
 def test_central_engine_cwd_independent():
     """Vấn đề 13: CentralAIEngine phải nạp đúng weights bất kể CWD ở đâu."""
-    orig_cwd = os.getcwd()
+    original_directory = os.getcwd()
     with tempfile.TemporaryDirectory() as tmpdir:
         try:
             os.chdir(tmpdir)
@@ -20,7 +20,7 @@ def test_central_engine_cwd_independent():
             assert engine.unified_weights is not None
             assert os.path.exists(engine.unified_weights)
         finally:
-            os.chdir(orig_cwd)
+            os.chdir(original_directory)
 
 
 def test_real_pm10_propagation():

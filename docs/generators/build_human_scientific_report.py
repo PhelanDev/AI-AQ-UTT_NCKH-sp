@@ -441,14 +441,14 @@ def generate_report():
     add_h1("7. KẾ HOẠCH NGHIÊN CỨU VÀ CÁC MỐC TIẾN ĐỘ DỰ KIẾN")
     add_para("Kế hoạch thực hiện đề tài được phân kỳ rõ ràng thành các giai đoạn logic:")
 
-    roadmap_data = [
+    milestone_rows = [
         ("Giai đoạn 1: Chuẩn bị dữ liệu & Kỹ nghệ đặc trưng", "Xử lý làm sạch 112k mẫu US EPA, trích xuất điểm sương Magnus và xây dựng pipeline chuẩn hóa.", "Bộ dữ liệu chuẩn hóa và bộ công cụ tiền xử lý Python."),
         ("Giai đoạn 2: Thiết kế mạng & Huấn luyện chống học vẹt", "Xây dựng cấu trúc RobustResMLP 19k tham số, huấn luyện với Stochastic Jitter và kiểm chứng 5-Fold CV.", "Trọng số mô hình nền tảng đạt R² ≥ 0.90."),
         ("Giai đoạn 3: Lượng tử hóa & Đóng gói động cơ C++", "Lượng tử hóa INT8 PTQ, sinh tệp model_data.h và viết runtime C++ không dùng Heap.", "Động cơ C++ nhúng biên dịch thành công trên vi điều khiển."),
         ("Giai đoạn 4: Thử nghiệm thực địa & Hiệu chỉnh", "Triển khai trạm đo chạy dã ngoại 30 ngày đối chứng trạm chuẩn trong mùa nồm ẩm tại Hà Nội.", "Bộ dữ liệu thực nghiệm thực địa và báo cáo phân tích sai số."),
         ("Giai đoạn 5: Nghiệm thu & Công bố khoa học", "Tổng hợp kết quả, viết báo cáo tổng kết đề tài và bài báo khoa học chuyên ngành.", "Báo cáo tổng kết đề tài và bản thảo bài báo khoa học.")
     ]
-    create_table(["Giai đoạn thực hiện", "Nội dung công việc nghiên cứu", "Sản phẩm bàn giao dự kiến"], roadmap_data,
+    create_table(["Giai đoạn thực hiện", "Nội dung công việc nghiên cứu", "Sản phẩm bàn giao dự kiến"], milestone_rows,
                  col_widths=[Inches(1.8), Inches(2.7), Inches(1.8)])
 
     output_path = os.path.abspath(r"d:\AQ\Bao_Cao_Ban_Dau_NCKH_Edge_AI.docx")

@@ -106,12 +106,12 @@ def print_banner():
 
 def print_summary_table(results_by_tier: Dict[int, Tuple[unittest.TestResult, float]]):
     """Prints a beautiful summary table of all test tiers."""
-    col_headers = ["Tier", "Description", "Total", "Pass", "Fail", "Error", "Skip", "Time (s)", "Status"]
+    column_headers = ["Tier", "Description", "Total", "Pass", "Fail", "Error", "Skip", "Time (s)", "Status"]
     col_widths = [8, 38, 6, 6, 6, 6, 6, 9, 8]
 
     sep_line = "-+-".join("-" * w for w in col_widths)
 
-    print(f"{Colors.BOLD}{format_row(col_headers, col_widths)}{Colors.RESET}")
+    print(f"{Colors.BOLD}{format_row(column_headers, col_widths)}{Colors.RESET}")
     print(sep_line)
 
     total_tests = 0

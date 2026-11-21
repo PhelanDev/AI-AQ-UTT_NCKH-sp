@@ -75,10 +75,10 @@ class HierarchicalCentralAI(nn.Module):
         last_context = gru_out[:, -1, :]  # shape (B, gru_hidden)
 
         # Nhánh 1: Tái tạo vector 16D hiện tại
-        recon_current = self.recon_head(last_context)
+        reconstructed_current = self.recon_head(last_context)
 
         # Nhánh 2: Dự báo 24 giờ tương lai (PM2.5 và AQI)
         raw_forecast = self.forecast_head(last_context)
         forecast_24h = F.relu(raw_forecast.view(b, self.out_steps, self.out_targets))
 
-        return forecast_24h, recon_current
+        return forecast_24h, reconstructed_current

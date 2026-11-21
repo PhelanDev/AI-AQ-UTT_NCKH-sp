@@ -83,12 +83,12 @@ def test_forecaster_convergence():
     model.load_state_dict(torch.load(pt_path, map_location="cpu", weights_only=True))
     model.eval()
 
-    dummy_in = np.random.randn(1, 24, 14).astype(np.float32)
+    sample_input = np.random.randn(1, 24, 14).astype(np.float32)
     with torch.no_grad():
-        py_out = model(torch.tensor(dummy_in)).numpy()
+        py_out = model(torch.tensor(sample_input)).numpy()
 
     sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
-    onnx_out = sess.run(None, {"input_timeseries": dummy_in})[0]
+    onnx_out = sess.run(None, {"input_timeseries": sample_input})[0]
 
     max_diff = float(np.max(np.abs(py_out - onnx_out)))
     assert max_diff < 1e-4, f"Parity diff qua lon: {max_diff}"
@@ -111,13 +111,13 @@ def test_autoencoder_reconstruction():
     model.eval()
 
     # Kiem tra numerical parity giua PyTorch va ONNX
-    dummy_in = np.random.randn(1, 48).astype(np.float32)
+    sample_input = np.random.randn(1, 48).astype(np.float32)
     with torch.no_grad():
-        py_rec, py_z = model(torch.tensor(dummy_in))
+        py_rec, py_z = model(torch.tensor(sample_input))
         py_rec_np = py_rec.numpy()
 
     sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
-    onnx_rec, onnx_z = sess.run(None, {"input_features_48d": dummy_in})
+    onnx_rec, onnx_z = sess.run(None, {"input_features_48d": sample_input})
 
     max_diff = float(np.max(np.abs(py_rec_np - onnx_rec)))
     assert max_diff < 1e-4, f"Autoencoder Parity diff qua lon: {max_diff}"

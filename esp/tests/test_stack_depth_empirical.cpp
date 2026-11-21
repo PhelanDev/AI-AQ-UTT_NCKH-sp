@@ -16,10 +16,10 @@ int main() {
     g_caller_sp = sp;
 
     bool is_anom = false;
-    float pred = tinyml_predict_pm25_multisensor(150.0f, 150.0f, 214.28f, 26.0f, 60.0f, 600.0f, 110.0f, &is_anom);
+    float predicted_pm25 = tinyml_predict_pm25_multisensor(150.0f, 150.0f, 214.28f, 26.0f, 60.0f, 600.0f, 110.0f, &is_anom);
 
     printf("Caller RSP: 0x%zx\n", g_caller_sp);
-    printf("Result: %.2f\n", pred);
+    printf("Result: %.2f\n", predicted_pm25);
 
     return 0;
 }

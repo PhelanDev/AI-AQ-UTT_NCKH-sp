@@ -114,12 +114,12 @@ class TestTier3PipelineIngestionToWindEstimation(unittest.TestCase):
         )
 
         speed_true = math.sqrt(v_sq)
-        bearing_true = (math.atan2(u_true, v_true) * 180.0 / math.pi) % 360.0
+        expected_bearing = (math.atan2(u_true, v_true) * 180.0 / math.pi) % 360.0
 
         self.assertAlmostEqual(v_est[0], u_true, delta=0.5)
         self.assertAlmostEqual(v_est[1], v_true, delta=0.5)
         self.assertAlmostEqual(speed_est, speed_true, delta=0.5)
-        self.assertAlmostEqual(bearing_est, bearing_true, delta=10.0)
+        self.assertAlmostEqual(bearing_est, expected_bearing, delta=10.0)
 
 class TestTier3PipelineWindToSourceLocalization(unittest.TestCase):
     """Pipeline 3: Wind Estimation -> Inverse Gaussian Plume Source Localization."""

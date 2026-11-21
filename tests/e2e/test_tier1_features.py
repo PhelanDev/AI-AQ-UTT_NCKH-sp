@@ -141,9 +141,9 @@ class TestTier1Feature2AdvectionDiffusion(unittest.TestCase):
     def test_f2_01_gaussian_puff_peak_at_origin(self):
         """Gaussian puff concentration has global maximum at center."""
         c_center = oracle_gaussian_puff(100.0, 100.0, 100.0, 100.0, sigma=25.0, mass=1000.0, pblh=500.0)
-        c_offset = oracle_gaussian_puff(120.0, 100.0, 100.0, 100.0, sigma=25.0, mass=1000.0, pblh=500.0)
+        offset_coefficient = oracle_gaussian_puff(120.0, 100.0, 100.0, 100.0, sigma=25.0, mass=1000.0, pblh=500.0)
         self.assertGreater(c_center, 0.0)
-        self.assertGreater(c_center, c_offset)
+        self.assertGreater(c_center, offset_coefficient)
 
     def test_f2_02_gaussian_puff_mass_conservation_scaling(self):
         """Concentration scales linearly with puff mass."""

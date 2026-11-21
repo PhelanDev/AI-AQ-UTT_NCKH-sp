@@ -283,8 +283,8 @@ def main():
         for r in all_rows:
             writer.writerow(r)
 
-    file_size_mb = os.path.getsize(out_csv) / (1024 * 1024)
-    print(f" -> Đã lưu Siêu tập dữ liệu hợp nhất vào: {out_csv} ({file_size_mb:.2f} MB)")
+    output_size_mb = os.path.getsize(out_csv) / (1024 * 1024)
+    print(f" -> Đã lưu Siêu tập dữ liệu hợp nhất vào: {out_csv} ({output_size_mb:.2f} MB)")
     print("=" * 80)
 
 if __name__ == "__main__":

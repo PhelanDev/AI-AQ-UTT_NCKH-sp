@@ -35,9 +35,9 @@ def test_n1_single_station_analyze():
         coordinates=STATION_COORDS_UTM[:1],
     )
     # Lịch sử 48 bước thời gian (12 giờ) của 1 trạm
-    pm25_history_1 = np.random.uniform(30.0, 60.0, size=(48, 1))
+    single_station_history = np.random.uniform(30.0, 60.0, size=(48, 1))
 
-    res = engine.analyze(pm25_history_1)
+    res = engine.analyze(single_station_history)
 
     assert res["num_active_stations"] == 1
     assert res["r_matrix"].shape == (1, 1)

@@ -90,11 +90,11 @@ def download_station_data(station: dict) -> list:
     )
     print(f"  -> Tải chuỗi khí tượng & lớp biên khí quyển PBLH 5 năm (2020 - 2024)...")
     t0 = time.time()
-    w_data = fetch_json(weather_url)
+    weather_data = fetch_json(weather_url)
     print(f"     + Đã tải xong Khí tượng trong {time.time() - t0:.2f}s")
 
     aq_hourly = aq_data.get("hourly", {})
-    w_hourly = w_data.get("hourly", {})
+    w_hourly = weather_data.get("hourly", {})
 
     times = aq_hourly.get("time", [])
     n = len(times)

@@ -25,6 +25,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from pi.central_engine import CentralAIEngine
+from pi.config import BUILD_ID
 from pi.spatial_temporal_engine import _vectorized_vn_aqi_pm25
 
 
@@ -256,6 +257,7 @@ class AQWebServerHandler(BaseHTTPRequestHandler):
             payload = {
                 "status": "OK",
                 "version": "5.0",
+                "build_id": BUILD_ID,
                 "prototype_station": "UTT_TrieuKhuc (54 Triều Khúc, Thanh Xuân Nam, Hà Nội)",
                 "uptime_seconds": uptime,
                 "active_stations": 1,
@@ -350,10 +352,10 @@ def create_server(host: str = "0.0.0.0", port: int = 8080, engine: Optional[Cent
 def run_server_in_thread(port: int = 8080, host: str = "127.0.0.1", engine: Optional[CentralAIEngine] = None) -> Tuple[ThreadingHTTPServer, int]:
     """Khởi động Web Server trong luồng nền (background thread), hỗ trợ port=0 cho testing."""
     server = create_server(host=host, port=port, engine=engine)
-    actual_port = server.server_address[1]
+    bound_port = server.server_address[1]
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    return server, actual_port
+    return server, bound_port
 
 
 def stop_server(server: ThreadingHTTPServer) -> None:
