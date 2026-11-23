@@ -1305,8 +1305,6 @@
         let stationMarker = null;
         let heatmapOverlay = null;
         let forecastChart = null;
-        let darkAtmospheric = null;
-        let lightAtmospheric = null;
 
         // Theme Engine V5.0
         const VALID_THEMES = ['system', 'light', 'dark'];
@@ -1388,21 +1386,6 @@
 
         function applyResolvedVisuals(resolvedTheme) {
             const isDark = (resolvedTheme === 'dark');
-
-            // 1. Hoán đổi lớp nền Leaflet tương thích với theme
-            if (leafletMap && darkAtmospheric && lightAtmospheric) {
-                if (isDark) {
-                    if (leafletMap.hasLayer(lightAtmospheric)) {
-                        leafletMap.removeLayer(lightAtmospheric);
-                        leafletMap.addLayer(darkAtmospheric);
-                    }
-                } else {
-                    if (leafletMap.hasLayer(darkAtmospheric)) {
-                        leafletMap.removeLayer(darkAtmospheric);
-                        leafletMap.addLayer(lightAtmospheric);
-                    }
-                }
-            }
 
             // 2. Cập nhật màu sắc biểu đồ Chart.js mà không làm mất dữ liệu
             if (forecastChart) {
@@ -1517,56 +1500,35 @@
                 }
             }, 250);
 
-            // 1. Chế Độ Tối Khí Tượng CartoDB Dark Matter (OpenStreetMap mới nhất, không nhãn cũ)
-            darkAtmospheric = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                maxZoom: 20,
-                subdomains: 'abcd',
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; CARTO'
-            });
-
-            // 2. Chế Độ Sáng Khí Tượng CartoDB Positron (OpenStreetMap mới nhất, không nhãn cũ)
-            lightAtmospheric = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                maxZoom: 20,
-                subdomains: 'abcd',
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; CARTO'
-            });
-
-            // 3. Đường Phố Google Maps (Cập nhật địa giới sau sáp nhập mới nhất tại Việt Nam)
+            // 1. Đường Phố Google Maps (Cập nhật địa giới sau sáp nhập mới nhất tại Việt Nam)
             const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
                 maxZoom: 20,
                 attribution: '&copy; Google Maps'
             });
 
-            // 4. Vệ Tinh Lai Google Maps (Vệ tinh thực địa + Tên đường cập nhật mới)
+            // 2. Vệ Tinh Lai Google Maps (Vệ tinh thực địa + Tên đường cập nhật mới)
             const googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
                 maxZoom: 20,
                 attribution: '&copy; Google Maps'
             });
 
-            // 5. Vệ Tinh Thực Địa Esri World Imagery (Thuần ảnh vệ tinh quang phổ, không nhãn)
+            // 3. Vệ Tinh Thực Địa Esri World Imagery (Thuần ảnh vệ tinh quang phổ, không nhãn)
             const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
                 attribution: 'Tiles &copy; Esri &mdash; World Imagery'
             });
 
-            // 6. Bản Đồ Mở OpenStreetMap Tiêu Chuẩn (Dữ liệu ranh giới mới nhất)
+            // 4. Bản Đồ Mở OpenStreetMap Tiêu Chuẩn (Dữ liệu ranh giới mới nhất)
             const osmStandard = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             });
 
-            // Lớp mặc định dựa theo theme hiện hành (sáng hoặc tối)
-            const initialResolved = document.documentElement.getAttribute('data-theme') || 'dark';
-            if (initialResolved === 'light') {
-                lightAtmospheric.addTo(leafletMap);
-            } else {
-                darkAtmospheric.addTo(leafletMap);
-            }
+            // Lớp mặc định: Đường phố Google
+            googleStreet.addTo(leafletMap);
 
             // Thêm bộ chuyển lớp (Layer Switcher) ở góc trên bên phải
             const baseMaps = {
-                "Bản đồ tối (Khí tượng)": darkAtmospheric,
-                "Bản đồ sáng (Khí tượng)": lightAtmospheric,
                 "Đường phố Google": googleStreet,
                 "Vệ tinh Google": googleHybrid,
                 "Vệ tinh Esri": esriSatellite,
