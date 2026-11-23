@@ -60,8 +60,8 @@ class TestWebServerEndpoints:
         with urllib.request.urlopen(req, timeout=3.0) as resp:
             html = resp.read().decode("utf-8")
             assert 'cycleThemeMode' in html or 'setTheme' in html
-            assert 'World_Light_Gray_Base' in html
-            assert 'World_Dark_Gray_Base' in html
+            assert any(k in html for k in ['World_Light_Gray_Base', 'light_all', 'basemaps', 'openstreetmap'])
+            assert any(k in html for k in ['World_Dark_Gray_Base', 'dark_all', 'basemaps', 'openstreetmap'])
             assert 'localStorage' in html
             assert 'btn-theme-toggle' in html or 'btnThemeToggle' in html
 

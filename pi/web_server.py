@@ -54,7 +54,7 @@ class AQServerState:
         # Trạng thái cảm biến trạm mẫu thực nghiệm 54 Triều Khúc (UTT)
         self.current_telemetry = {
             "station_id": "STATION_01",
-            "station_name": "Trạm Thử Nghiệm UTT - 54 Triều Khúc, Thanh Xuân Nam, Hà Nội",
+            "station_name": "Trạm Thử Nghiệm UTT - 54 Triều Khúc, Hà Nội",
             "latitude": 20.983688,
             "longitude": 105.797477,
             "pm25": 38.5,
@@ -258,7 +258,7 @@ class AQWebServerHandler(BaseHTTPRequestHandler):
                 "status": "OK",
                 "version": "5.0",
                 "build_id": BUILD_ID,
-                "prototype_station": "UTT_TrieuKhuc (54 Triều Khúc, Thanh Xuân Nam, Hà Nội)",
+                "prototype_station": "UTT_TrieuKhuc (54 Triều Khúc, Hà Nội)",
                 "uptime_seconds": uptime,
                 "active_stations": 1,
                 "duty_cycle": "15-min duty cycle with 30-sample burst",
@@ -375,7 +375,7 @@ def main():
 
     print(f"============================================================")
     print(f" Khởi động AQ-Server V5.0 (Raspberry Pi 5 Embedded)")
-    print(f" Trạm thực nghiệm mẫu: 54 Triều Khúc (UTT), Thanh Xuân Nam, Hà Nội")
+    print(f" Trạm thực nghiệm mẫu: 54 Triều Khúc (UTT), Hà Nội")
     print(f" Chu kỳ quan trắc: 15 phút, lấy mẫu burst 30 lần với bộ lọc 20% Trimmed Mean")
     print(f" Lắng nghe tại: http://0.0.0.0:{port}")
     print(f"============================================================")

@@ -1475,44 +1475,42 @@
                 }
             }, 250);
 
-            // 1. Vệ Tinh Thực Địa Độ Phân Giải Cao Esri World Imagery (100% Free, NO API KEY)
+            // 1. Chế Độ Tối Khí Tượng CartoDB Dark Matter (OpenStreetMap mới nhất, không nhãn cũ)
+            darkAtmospheric = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 20,
+                subdomains: 'abcd',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; CARTO'
+            });
+
+            // 2. Chế Độ Sáng Khí Tượng CartoDB Positron (OpenStreetMap mới nhất, không nhãn cũ)
+            lightAtmospheric = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 20,
+                subdomains: 'abcd',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; CARTO'
+            });
+
+            // 3. Đường Phố Google Maps (Cập nhật địa giới sau sáp nhập mới nhất tại Việt Nam)
+            const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                maxZoom: 20,
+                attribution: '&copy; Google Maps'
+            });
+
+            // 4. Vệ Tinh Lai Google Maps (Vệ tinh thực địa + Tên đường cập nhật mới)
+            const googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                maxZoom: 20,
+                attribution: '&copy; Google Maps'
+            });
+
+            // 5. Vệ Tinh Thực Địa Esri World Imagery (Thuần ảnh vệ tinh quang phổ, không nhãn)
             const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
                 attribution: 'Tiles &copy; Esri &mdash; World Imagery'
             });
 
-            // 2. Chế Độ Tối Khí Tượng Esri Dark Gray Canvas (100% Free, NO API KEY)
-            const darkBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            // 6. Bản Đồ Mở OpenStreetMap Tiêu Chuẩn (Dữ liệu ranh giới mới nhất)
+            const osmStandard = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
-                attribution: 'Tiles &copy; Esri'
-            });
-            const darkRef = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 19,
-                attribution: ''
-            });
-            darkAtmospheric = L.layerGroup([darkBase, darkRef]);
-
-            // 3. Chế Độ Sáng Khí Tượng Esri Light Gray Canvas (100% Free, NO API KEY)
-            const lightBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 19,
-                attribution: 'Tiles &copy; Esri'
-            });
-            const lightRef = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 19,
-                attribution: ''
-            });
-            lightAtmospheric = L.layerGroup([lightBase, lightRef]);
-
-            // 4. Bản Đồ Đường Phố Chi Tiết Esri World Street Map (100% Free, NO API KEY)
-            const esriStreet = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 19,
-                attribution: 'Tiles &copy; Esri &mdash; Street Map'
-            });
-
-            // 5. Bản Đồ Địa Hình & Khí Hậu Esri World Topo Map (100% Free, NO API KEY)
-            const esriTopo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 19,
-                attribution: 'Tiles &copy; Esri &mdash; Topo Map'
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             });
 
             // Lớp mặc định dựa theo theme hiện hành (sáng hoặc tối)
@@ -1525,11 +1523,12 @@
 
             // Thêm bộ chuyển lớp (Layer Switcher) ở góc trên bên phải
             const baseMaps = {
-                "Bản đồ tối": darkAtmospheric,
-                "Bản đồ sáng": lightAtmospheric,
-                "Bản đồ đường phố": esriStreet,
-                "Bản đồ vệ tinh": esriSatellite,
-                "Bản đồ địa hình": esriTopo
+                "Bản đồ tối (Khí tượng)": darkAtmospheric,
+                "Bản đồ sáng (Khí tượng)": lightAtmospheric,
+                "Đường phố Google": googleStreet,
+                "Vệ tinh Google": googleHybrid,
+                "Vệ tinh Esri": esriSatellite,
+                "OpenStreetMap": osmStandard
             };
             L.control.layers(baseMaps, null, { position: 'topright' }).addTo(leafletMap);
 
@@ -1544,11 +1543,11 @@
             stationMarker.bindPopup(`
                 <div style="font-family: var(--font-sans); padding: 4px; color: #1e293b;">
                     <strong style="color: #ea580c; font-size: 13px;">Trạm Đo UTT Triều Khúc</strong><br/>
-                    <span style="font-size: 11px; color: #64748b;">54 Triều Khúc, Thanh Xuân Nam, Hà Nội</span>
+                    <span style="font-size: 11px; color: #64748b;">Số 54 Triều Khúc, Hà Nội (ĐH Công nghệ GTVT)</span>
                     <hr style="margin: 5px 0; border: none; border-top: 1px solid #cbd5e1;"/>
                     <div style="font-size: 11px; line-height: 1.5;">
                         • Tọa độ: <strong>20.9837°B, 105.7975°Đ</strong><br/>
-                        • Vị trí đặt trạm: <strong>ĐH Công nghệ GTVT</strong><br/>
+                        • Vị trí đặt trạm: <strong>ĐH Công nghệ Giao thông vận tải (UTT)</strong><br/>
                         • Bán kính bao phủ: <strong>khoảng 500m</strong><br/>
                         • Cảm biến tích hợp: <strong>PMS7003, SHT40, S8, SGP41</strong><br/>
                         • Tần suất gửi tin: <strong>15 phút/lần</strong>
