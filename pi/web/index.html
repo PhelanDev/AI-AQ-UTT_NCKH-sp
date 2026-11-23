@@ -498,17 +498,18 @@
 
         .horizon-buttons {
             display: flex;
-            background: #1E293B;
+            background: var(--horizon-bg);
             padding: 3px;
             border-radius: 6px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border-hairline);
             gap: 2px;
+            transition: background 0.2s ease, border-color 0.2s ease;
         }
 
         .btn-horizon {
             background: transparent;
             border: none;
-            color: #94A3B8;
+            color: var(--text-muted);
             padding: 5px 12px;
             border-radius: 4px;
             font-size: 0.76rem;
@@ -520,15 +521,19 @@
         }
 
         .btn-horizon:hover {
-            color: #F8FAFC;
-            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-heading);
+            background: rgba(125, 125, 125, 0.1);
         }
 
         .btn-horizon.active {
-            background: rgba(255, 255, 255, 0.15);
-            color: #F8FAFC;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+            background: var(--horizon-active-bg);
+            color: var(--horizon-active-text);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
             font-weight: 600;
+        }
+
+        [data-theme="light"] .btn-horizon.active {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
         }
 
         #mapContainer {
@@ -538,7 +543,7 @@
             height: 530px;
             border-radius: 8px;
             border: 1px solid var(--border-hairline);
-            background: #090A0F;
+            background: var(--bg-surface);
             position: relative;
             overflow: hidden;
         }
@@ -575,13 +580,14 @@
         /* Leaflet Controls Styling with Glassmorphism */
         .leaflet-bar {
             border: none !important;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
             border-radius: 6px !important;
             overflow: hidden;
+            background: transparent !important;
         }
 
         .leaflet-bar a {
-            background: rgba(18, 20, 28, 0.82) !important;
+            background: rgba(18, 20, 28, 0.85) !important;
             backdrop-filter: blur(8px) !important;
             -webkit-backdrop-filter: blur(8px) !important;
             border-color: rgba(255, 255, 255, 0.08) !important;
@@ -618,12 +624,48 @@
             border: 1px solid rgba(255, 255, 255, 0.08) !important;
             border-radius: 6px !important;
             font-size: 0.75rem !important;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+        }
+
+        .leaflet-control-layers-toggle {
+            filter: invert(0.9);
         }
 
         .leaflet-control-layers-base label {
             color: var(--text-body) !important;
             margin-bottom: 2px;
+        }
+
+        /* Light Theme Overrides cho Map Controls & Layers Icon */
+        [data-theme="light"] .leaflet-bar {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+            background: transparent !important;
+        }
+
+        [data-theme="light"] .leaflet-bar a {
+            background: rgba(255, 255, 255, 0.95) !important;
+            border-color: rgba(15, 23, 42, 0.08) !important;
+            color: #334155 !important;
+        }
+
+        [data-theme="light"] .leaflet-bar a:hover {
+            background: #F1F5F9 !important;
+            color: #0F172A !important;
+        }
+
+        [data-theme="light"] .leaflet-control-layers {
+            background: rgba(255, 255, 255, 0.95) !important;
+            color: var(--text-heading) !important;
+            border: 1px solid rgba(15, 23, 42, 0.12) !important;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08) !important;
+        }
+
+        [data-theme="light"] .leaflet-control-layers-toggle {
+            filter: none;
+        }
+
+        [data-theme="light"] .leaflet-control-layers-base label {
+            color: var(--text-heading) !important;
         }
 
         .map-scale-legend {
