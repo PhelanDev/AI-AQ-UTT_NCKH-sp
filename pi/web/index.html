@@ -931,15 +931,18 @@
     <main>
         <!-- 4 Key Telemetry Cards -->
         <section class="telemetry-grid">
-            <!-- Card 1: VN-AQI Alert Focus -->
+            <!-- Card 1: Local Station AQI Focus -->
             <div class="card" id="cardVnAqi">
                 <div class="card-header-row">
-                    <span class="card-title">Chất Lượng Không Khí VN-AQI</span>
+                    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+                        <span class="card-title">Chỉ Số AQI Trạm Đo</span>
+                        <span class="sensor-tag">Mô Hình UTT AI</span>
+                    </div>
                     <span class="aqi-pill" id="badgeAqiCategory" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">Đang tải</span>
                 </div>
                 <div class="card-big-value">
                     <span id="valVnAqi">--</span>
-                    <span class="card-unit">QCVN 05:2023</span>
+                    <span class="card-unit" title="Thang đo chất lượng không khí VN-AQI theo QCVN 05:2023/BTNMT">Điểm AQI (Chuẩn VN-AQI)</span>
                 </div>
                 <div class="card-sparkline-box">
                     <svg class="sparkline-svg" id="sparklineAqi" viewBox="0 0 120 24" preserveAspectRatio="none"></svg>

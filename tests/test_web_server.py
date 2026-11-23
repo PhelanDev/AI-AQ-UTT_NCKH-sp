@@ -38,6 +38,8 @@ class TestWebServerEndpoints:
             assert "text/html" in content_type
             html_body = resp.read().decode("utf-8")
             assert "54 Triều Khúc" in html_body
+            assert "Chỉ Số AQI Trạm Đo" in html_body
+            assert "Mô Hình UTT AI" in html_body
             assert "VN-AQI" in html_body
             assert "leaflet" in html_body.lower()
 
