@@ -94,6 +94,7 @@ class TestWebServerEndpoints:
         with urllib.request.urlopen(req, timeout=3.0) as resp:
             html = resp.read().decode("utf-8")
             assert "forecastHudBar" in html or "chart-hud-bar" in html
+            assert "chart-legend-row" in html
             assert "text-wrap: balance" in html
             assert "hudHourChip" in html
             assert "hudPm25Val" in html

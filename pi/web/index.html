@@ -674,6 +674,41 @@
             text-wrap: balance;
         }
 
+        /* HTML Chart Legend: Đảm bảo responsive tuyệt đối, không bao giờ bị cắt cụt chữ */
+        .chart-legend-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 14px;
+            font-size: 0.73rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+            flex-wrap: wrap;
+        }
+
+        .chart-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .legend-color-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .legend-color-dash {
+            width: 14px;
+            height: 2px;
+            border-radius: 1px;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
         .chart-hud-bar {
             display: flex;
             align-items: center;
@@ -767,6 +802,7 @@
         @media (max-width: 768px) {
             header {
                 padding: 10px 16px;
+                position: static; /* Gỡ sticky trên mobile: giải phóng 140px màn hình khi cuộn */
             }
             .header-container {
                 gap: 10px;
@@ -811,7 +847,7 @@
             .map-toolbar {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 8px;
+                gap: 6px;
             }
             .horizon-buttons {
                 width: 100%;
@@ -833,26 +869,40 @@
             #mapContainer {
                 height: 350px;
             }
+            .chart-legend-row {
+                justify-content: flex-start;
+                gap: 10px;
+                font-size: 0.69rem;
+            }
             .chart-box {
-                height: 290px;
+                height: 310px;
             }
             .chart-hud-bar {
-                padding: 5px 10px;
+                padding: 6px 10px;
                 font-size: 0.72rem;
                 gap: 6px;
+                flex-wrap: wrap;
             }
             .map-scale-legend {
                 position: static;
                 width: 100%;
-                margin-top: 6px;
-                padding: 6px 10px;
+                margin-top: 4px;
+                padding: 4px 6px;
                 box-shadow: none;
                 background: transparent;
                 border: none;
             }
+            .legend-title {
+                font-size: 0.68rem;
+                margin-bottom: 2px;
+            }
             .legend-gradient-bar {
                 width: 100%;
-                height: 6px;
+                height: 5px;
+                margin-bottom: 2px;
+            }
+            .legend-ticks {
+                font-size: 0.66rem;
             }
             .horizon-buttons-wrapper {
                 position: relative;
@@ -1068,6 +1118,18 @@
                             Dự báo chuỗi thời gian 24 giờ &amp; Ngưỡng an toàn QCVN
                         </div>
                     </div>
+                </div>
+
+                <!-- HTML Chart Legend: Không bao giờ bị cắt cụt chữ trên mobile -->
+                <div class="chart-legend-row">
+                    <span class="chart-legend-item">
+                        <span class="legend-color-dot" style="background-color: #F97316;"></span>
+                        <span>Dự Báo PM2.5</span>
+                    </span>
+                    <span class="chart-legend-item">
+                        <span class="legend-color-dash" style="background-color: rgba(239, 68, 68, 0.85);"></span>
+                        <span>Ngưỡng An Toàn QCVN (50 µg/m³)</span>
+                    </span>
                 </div>
 
                 <!-- Scrubber HUD Bar: Hiển thị thông số mốc giờ khi chạm lướt mà không che đồ thị -->
@@ -1315,7 +1377,10 @@
             }).setView([uttLat, uttLon], defaultZoom);
 
             setTimeout(() => {
-                if (leafletMap) leafletMap.invalidateSize();
+                if (leafletMap) {
+                    leafletMap.invalidateSize();
+                    leafletMap.panTo([uttLat, uttLon], { animate: false });
+                }
             }, 250);
 
             // 1. Vệ Tinh Thực Địa Độ Phân Giải Cao Esri World Imagery (100% Free, NO API KEY)
@@ -1558,7 +1623,7 @@
                             left: isMobile ? 2 : 4,
                             right: 14,
                             top: 4,
-                            bottom: 4
+                            bottom: isMobile ? 8 : 4
                         }
                     },
                     interaction: {
@@ -1576,16 +1641,7 @@
                     },
                     plugins: {
                         legend: {
-                            position: 'top',
-                            align: 'end',
-                            labels: {
-                                color: '#94A3B8',
-                                font: { size: 11, family: 'var(--font-sans)' },
-                                usePointStyle: true,
-                                boxWidth: 6,
-                                boxHeight: 6,
-                                padding: 20
-                            }
+                            display: false
                         },
                         tooltip: {
                             enabled: !isMobile,
@@ -1623,6 +1679,7 @@
                                 font: { size: 10, family: 'var(--font-mono)' },
                                 maxRotation: 0,
                                 minRotation: 0,
+                                autoSkip: false,
                                 callback: function(val, index) {
                                     const hour = index + 1;
                                     return (hour % 3 === 0) ? `+${hour}h` : '';
@@ -1771,6 +1828,7 @@
                 renderHeatmapOverlay();
                 if (leafletMap) {
                     leafletMap.invalidateSize();
+                    leafletMap.panTo([20.983688, 105.797477], { animate: false });
                 }
             } catch (err) {
                 console.error('Lỗi tải dữ liệu bản đồ:', err);
@@ -1835,17 +1893,21 @@
             initForecastChart();
 
             window.addEventListener('resize', () => {
-                if (leafletMap) leafletMap.invalidateSize();
+                if (leafletMap) {
+                    leafletMap.invalidateSize();
+                    leafletMap.panTo([20.983688, 105.797477], { animate: false });
+                }
                 if (forecastChart) {
                     const isMobile = window.innerWidth <= 768;
                     forecastChart.options.scales.y.title.display = !isMobile;
                     forecastChart.options.plugins.tooltip.enabled = !isMobile;
+                    forecastChart.options.plugins.legend.display = false;
                     if (!forecastChart.options.layout) forecastChart.options.layout = {};
                     forecastChart.options.layout.padding = {
                         left: isMobile ? 2 : 4,
                         right: 14,
                         top: 4,
-                        bottom: 4
+                        bottom: isMobile ? 8 : 4
                     };
                     forecastChart.update('none');
                 }
