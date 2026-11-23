@@ -150,7 +150,8 @@ class AQServerState:
             
             # Chuẩn bị dữ liệu map và forecast
             web_map = res.get("web_map", {})
-            forecast_data = res.get("forecast", {})
+            forecast_data = dict(res.get("forecast", {}))
+            forecast_data["current_pm25"] = round(pm25_val, 1)
             if "aqi_pred" not in forecast_data and "pm25_pred" in forecast_data:
                 forecast_data["aqi_pred"] = _vectorized_vn_aqi_pm25(
                     np.array(forecast_data["pm25_pred"])
@@ -247,6 +248,7 @@ class AQWebServerHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(content)))
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
                 self.end_headers()
                 self.wfile.write(content)
             except (BrokenPipeError, ConnectionResetError):

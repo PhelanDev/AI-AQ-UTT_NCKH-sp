@@ -906,10 +906,9 @@ class CentralAIEngine:
             feat_16[i, :, 2] = temp_c
             feat_16[i, :, 3] = rh_pct
 
-            a_mt, b_mt = 17.27, 237.7
-            alpha_mt = ((a_mt * temp_c) / (b_mt + temp_c)) + math.log(max(1.0, min(100.0, rh_pct)) / 100.0)
-            dp_c = (b_mt * alpha_mt) / (a_mt - alpha_mt)
-            feat_16[i, :, 4] = dp_c
+            diff_seq = np.zeros_like(pm_seq, dtype=np.float32)
+            diff_seq[1:] = pm_seq[1:] - pm_seq[:-1]
+            feat_16[i, :, 4] = diff_seq
 
             co2_val = float(st_mat[i, 4])
             voc_val = float(st_mat[i, 5])
@@ -920,11 +919,9 @@ class CentralAIEngine:
             feat_16[i, :, 8] = wind_v
             feat_16[i, :, 9] = 1013.2
 
-            # Tính toán góc pha thời gian thích ứng với dt_s (mặc định 3600s = 1h, hoặc 900s = 15m)
-            step_hours = dt_s / 3600.0
+            # Góc pha 24h theo bước 1 giờ khớp chuẩn cửa sổ huấn luyện của HierarchicalCentralAI
             for t in range(24):
-                time_offset = (23 - t) * step_hours
-                h_step = (base_hour - time_offset) % 24.0
+                h_step = (base_hour - (23 - t)) % 24.0
                 feat_16[i, t, 10] = math.sin(2.0 * math.pi * h_step / 24.0)
                 feat_16[i, t, 11] = math.cos(2.0 * math.pi * h_step / 24.0)
                 feat_16[i, t, 12] = math.sin(2.0 * math.pi * (base_mon - 1) / 12.0)
@@ -948,9 +945,23 @@ class CentralAIEngine:
 
         pm25_phys = f_out[:, :, 0] * float(self.feat_denom_16[0]) + float(self.feat_min_16[0])
         pm25_forecasts = np.maximum(0.0, pm25_phys)
-        aqi_head = f_out[:, :, 1] * float(self.feat_denom_16[15]) + float(self.feat_min_16[15])
-        aqi_calc = _vectorized_vn_aqi_pm25(pm25_forecasts)
-        aqi_forecasts = np.maximum(0.0, 0.5 * aqi_head + 0.5 * aqi_calc)
+
+        # Neo mượt về giá trị đo thực tế và làm mịn răng cưa đầu ra Linear 24h
+        h_steps = np.arange(1, pm25_forecasts.shape[1] + 1, dtype=np.float32)
+        anchor_decay = 0.65 * np.exp(-h_steps / 2.5)
+        for i in range(n_active):
+            cur_pm = max(0.0, float(st_mat[i, 0]))
+            raw_24 = pm25_forecasts[i]
+            anchored = raw_24 + (cur_pm - float(raw_24[0])) * anchor_decay
+            seq = np.concatenate([[cur_pm], anchored])
+            for _ in range(2):
+                nxt = seq.copy()
+                nxt[1:-1] = 0.25 * seq[:-2] + 0.5 * seq[1:-1] + 0.25 * seq[2:]
+                nxt[-1] = 0.25 * seq[-2] + 0.75 * seq[-1]
+                seq = nxt
+            pm25_forecasts[i] = np.maximum(0.0, seq[1:])
+
+        aqi_forecasts = _vectorized_vn_aqi_pm25(pm25_forecasts)
 
         recon_errors = np.mean((feat_norm[:, -1, :] - r_out) ** 2, axis=1)
         anom_score = float(np.max(recon_errors))
@@ -983,7 +994,8 @@ class CentralAIEngine:
             0.65, 2.5
         ))
         base_std = getattr(self, "horizon_std_pm25", np.array([3.5 + 0.35 * h for h in range(24)], dtype=np.float32))
-        h_std = base_std * scale_dynamic
+        fan_growth = 0.30 + 0.70 * np.sqrt(np.arange(len(base_std), dtype=np.float32) / max(1, len(base_std) - 1))
+        h_std = base_std * scale_dynamic * fan_growth
         pm25_p10 = []
         pm25_p90 = []
         for p, s_h in zip(pm25_rep, h_std):

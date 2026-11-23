@@ -182,6 +182,27 @@ class TestWebServerEndpoints:
             assert len(data["pm25_p90"]) == 24
             assert "aqi_pred" in data
 
+    def test_api_forecast_physical_continuity_and_fan(self, test_server):
+        """Kiểm tra dự báo 24h khớp giá trị đo thực tế, mượt và mở phễu P10-P90 dần."""
+        url = f"{test_server}/api/forecast"
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=2.0) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode("utf-8"))
+
+        assert "current_pm25" in data
+        cur = float(data["current_pm25"])
+        preds = [float(x) for x in data["pm25_pred"]]
+        p10 = [float(x) for x in data["pm25_p10"]]
+        p90 = [float(x) for x in data["pm25_p90"]]
+
+        assert abs(preds[0] - cur) <= 5.0
+        max_step = max(abs(b - a) for a, b in zip(preds, preds[1:]))
+        assert max_step <= 8.0
+        assert min(preds) >= 20.0
+        assert max(preds) <= 55.0
+        assert (p90[-1] - p10[-1]) > (p90[0] - p10[0])
+
     def test_api_trigger_cycle_post(self, test_server):
         """Kiểm tra API kích hoạt tính toán chu kỳ mới: POST /api/trigger_cycle."""
         url = f"{test_server}/api/trigger_cycle"

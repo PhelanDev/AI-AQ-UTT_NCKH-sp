@@ -1248,7 +1248,7 @@
                         <span>Dự Báo PM2.5</span>
                     </span>
                     <span class="chart-legend-item">
-                        <span class="legend-color-dash" style="background: rgba(249, 115, 22, 0.22); border-top: 1px dashed rgba(148, 163, 184, 0.75); border-bottom: 1px dashed rgba(148, 163, 184, 0.75); height: 8px; width: 14px;"></span>
+                        <span class="legend-color-dash" style="background: rgba(249, 115, 22, 0.18); border-top: 1px solid rgba(249, 115, 22, 0.35); border-bottom: 1px solid rgba(249, 115, 22, 0.35); height: 8px; width: 14px; border-radius: 2px;"></span>
                         <span>Khoảng Tin Cậy (P10 - P90)</span>
                     </span>
                     <span class="chart-legend-item">
@@ -1424,11 +1424,11 @@
                 if (forecastChart.data.datasets && forecastChart.data.datasets.length > 0) {
                     forecastChart.data.datasets[0].pointBorderColor = isDark ? '#090A0F' : '#FFFFFF';
                     if (forecastChart.data.datasets[1]) {
-                        forecastChart.data.datasets[1].borderColor = isDark ? 'rgba(148, 163, 184, 0.45)' : 'rgba(100, 116, 139, 0.5)';
+                        forecastChart.data.datasets[1].borderColor = 'rgba(249, 115, 22, 0.22)';
                     }
                     if (forecastChart.data.datasets[2]) {
-                        forecastChart.data.datasets[2].borderColor = isDark ? 'rgba(148, 163, 184, 0.45)' : 'rgba(100, 116, 139, 0.5)';
-                        forecastChart.data.datasets[2].backgroundColor = isDark ? 'rgba(249, 115, 22, 0.08)' : 'rgba(249, 115, 22, 0.12)';
+                        forecastChart.data.datasets[2].borderColor = 'rgba(249, 115, 22, 0.22)';
+                        forecastChart.data.datasets[2].backgroundColor = 'rgba(249, 115, 22, 0.14)';
                     }
                 }
 
@@ -1652,7 +1652,7 @@
             const hudRange = document.getElementById('hudRangeVal');
             if (!hourChip || !pm25Val || !aqiPill) return;
 
-            hourChip.textContent = `+${index + 1}h Tới`;
+            hourChip.textContent = (index === 0) ? 'Hiện Tại' : `+${index}h Tới`;
             if (val !== undefined && val !== null && !isNaN(val)) {
                 pm25Val.textContent = Number(val).toFixed(1);
 
@@ -1666,7 +1666,10 @@
                 }
 
                 if (hudRange) {
-                    if (p10Val !== undefined && p10Val !== null && p90Val !== undefined && p90Val !== null) {
+                    if (index === 0) {
+                        hudRange.textContent = '(Đo thực tế)';
+                        hudRange.style.display = 'inline';
+                    } else if (p10Val !== undefined && p10Val !== null && p90Val !== undefined && p90Val !== null) {
                         hudRange.textContent = `[${Number(p10Val).toFixed(1)} - ${Number(p90Val).toFixed(1)}]`;
                         hudRange.style.display = 'inline';
                     } else {
@@ -1690,7 +1693,7 @@
         // Biểu đồ dự báo chuỗi thời gian 24 giờ chuẩn khí tượng
         function initForecastChart() {
             const ctx = document.getElementById('forecastChart').getContext('2d');
-            const labels = Array.from({ length: 24 }, (_, i) => `+${i + 1}h`);
+            const labels = ['Hiện tại', ...Array.from({ length: 24 }, (_, i) => `+${i + 1}h`)];
             const isMobile = window.innerWidth <= 768;
 
             forecastChart = new Chart(ctx, {
@@ -1702,47 +1705,48 @@
                             label: 'Dự Báo PM2.5 (µg/m³)',
                             data: [],
                             borderColor: '#F97316',
-                            borderWidth: 2.4,
+                            borderWidth: 2.5,
                             pointBackgroundColor: '#F97316',
                             pointBorderColor: '#090A0F',
                             pointBorderWidth: 1.5,
-                            pointRadius: 2.5,
+                            pointRadius: (ctx) => ctx.dataIndex === 0 ? 4.5 : 0,
                             pointHoverRadius: 5.5,
-                            tension: 0.35,
+                            tension: 0.4,
+                            cubicInterpolationMode: 'monotone',
                             fill: false,
                             order: 1
                         },
                         {
                             label: 'Mức Trần (P90)',
                             data: [],
-                            borderColor: 'rgba(148, 163, 184, 0.45)',
-                            borderWidth: 1.2,
-                            borderDash: [4, 3],
+                            borderColor: 'rgba(249, 115, 22, 0.22)',
+                            borderWidth: 1,
                             pointRadius: 0,
                             pointHoverRadius: 0,
-                            tension: 0.35,
+                            tension: 0.4,
+                            cubicInterpolationMode: 'monotone',
                             fill: false,
                             order: 2
                         },
                         {
                             label: 'Mức Sàn (P10)',
                             data: [],
-                            borderColor: 'rgba(148, 163, 184, 0.45)',
-                            borderWidth: 1.2,
-                            borderDash: [4, 3],
+                            borderColor: 'rgba(249, 115, 22, 0.22)',
+                            borderWidth: 1,
                             pointRadius: 0,
                             pointHoverRadius: 0,
-                            tension: 0.35,
+                            tension: 0.4,
+                            cubicInterpolationMode: 'monotone',
                             fill: '-1',
-                            backgroundColor: 'rgba(249, 115, 22, 0.08)',
+                            backgroundColor: 'rgba(249, 115, 22, 0.14)',
                             order: 3
                         },
                         {
                             label: 'Giới Hạn QCVN (50 µg/m³)',
-                            data: Array(24).fill(50),
-                            borderColor: 'rgba(239, 68, 68, 0.75)',
-                            borderDash: [6, 4],
-                            borderWidth: 1.4,
+                            data: Array(25).fill(50),
+                            borderColor: 'rgba(239, 68, 68, 0.65)',
+                            borderDash: [5, 5],
+                            borderWidth: 1.25,
                             pointRadius: 0,
                             pointHoverRadius: 0,
                             fill: false,
@@ -1788,6 +1792,7 @@
                             padding: 10,
                             titleFont: { family: 'var(--font-mono)' },
                             bodyFont: { family: 'var(--font-mono)' },
+                            filter: (item) => !(item.dataIndex === 0 && (item.datasetIndex === 1 || item.datasetIndex === 2)),
                             callbacks: {
                                 label: function(context) {
                                     if (context.datasetIndex === 0) {
@@ -1797,6 +1802,9 @@
                                         else if (val > 80) level = 'Xấu';
                                         else if (val > 50) level = 'Kém';
                                         else if (val > 25) level = 'Trung Bình';
+                                        if (context.dataIndex === 0) {
+                                            return ` Đo thực tế: ${val.toFixed(1)} µg/m³ (${level})`;
+                                        }
                                         return ` Dự Báo: ${val.toFixed(1)} µg/m³ (${level})`;
                                     } else if (context.datasetIndex === 1) {
                                         return ` Mức Trần (P90): ${context.parsed.y.toFixed(1)} µg/m³`;
@@ -1820,8 +1828,10 @@
                                 minRotation: 0,
                                 autoSkip: false,
                                 callback: function(val, index) {
-                                    const hour = index + 1;
-                                    return (hour % 3 === 0) ? `+${hour}h` : '';
+                                    const narrow = window.innerWidth <= 480;
+                                    if (index === 0) return narrow ? 'Nay' : 'Hiện tại';
+                                    if (narrow) return (index % 6 === 0) ? `+${index}h` : '';
+                                    return (index % 3 === 0) ? `+${index}h` : '';
                                 }
                             }
                         },
@@ -1982,15 +1992,27 @@
                 const data = await res.json();
 
                 if (forecastChart && data.pm25_pred && data.pm25_pred.length > 0) {
-                    forecastChart.data.datasets[0].data = data.pm25_pred;
-                    if (data.pm25_p90 && forecastChart.data.datasets[1]) {
-                        forecastChart.data.datasets[1].data = data.pm25_p90;
+                    const curPm = (typeof data.current_pm25 === 'number') ? data.current_pm25 : data.pm25_pred[0];
+                    const p90Arr = (data.pm25_p90 && data.pm25_p90.length > 0) ? data.pm25_p90 : data.pm25_pred;
+                    const p10Arr = (data.pm25_p10 && data.pm25_p10.length > 0) ? data.pm25_p10 : data.pm25_pred;
+
+                    forecastChart.data.datasets[0].data = [curPm, ...data.pm25_pred];
+                    if (forecastChart.data.datasets[1]) {
+                        forecastChart.data.datasets[1].data = [curPm, ...p90Arr];
                     }
-                    if (data.pm25_p10 && forecastChart.data.datasets[2]) {
-                        forecastChart.data.datasets[2].data = data.pm25_p10;
+                    if (forecastChart.data.datasets[2]) {
+                        forecastChart.data.datasets[2].data = [curPm, ...p10Arr];
                     }
+                    if (forecastChart.data.datasets[3]) {
+                        forecastChart.data.datasets[3].data = Array(data.pm25_pred.length + 1).fill(50);
+                    }
+
+                    const allVals = [curPm, ...data.pm25_pred, ...p10Arr, ...p90Arr, 50];
+                    forecastChart.options.scales.y.min = Math.max(0, Math.floor((Math.min(...allVals) - 6) / 5) * 5);
+                    forecastChart.options.scales.y.max = Math.ceil((Math.max(...allVals) + 6) / 5) * 5;
+
                     forecastChart.update();
-                    updateForecastHud(0, data.pm25_pred[0], data.pm25_p10 ? data.pm25_p10[0] : null, data.pm25_p90 ? data.pm25_p90[0] : null);
+                    updateForecastHud(1, data.pm25_pred[0], p10Arr[0], p90Arr[0]);
                 }
             } catch (err) {
                 console.error('Lỗi tải dữ liệu dự báo:', err);
